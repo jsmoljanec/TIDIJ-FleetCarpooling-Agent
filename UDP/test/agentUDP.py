@@ -1,6 +1,12 @@
 import socket
 
-serverAddressPort = ("127.0.0.1", 50001)
+hostname = socket.gethostname()
+ip_address = "127.0.0.1"
+# ip_address = socket.gethostbyname(hostname)
+
+port = 50001
+
+serverAddressPort = (ip_address, port)
 bufferSize = 1024
 
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)

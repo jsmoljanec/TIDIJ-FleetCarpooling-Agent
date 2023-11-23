@@ -12,6 +12,7 @@ END_POINT = {"latitude": 37.7749, "longitude": -122.4313}
 START = "start"
 END = "end"
 
+
 def car_simulation(ws, simulation_status):
     print(f"Route connected: {ws.receive()}")
 
@@ -24,17 +25,19 @@ def car_simulation(ws, simulation_status):
                 progress = i / 10.0
                 current_location = {
                     "latitude": START_POINT["latitude"] + progress * (END_POINT["latitude"] - START_POINT["latitude"]),
-                    "longitude": START_POINT["longitude"] + progress * (END_POINT["longitude"] - START_POINT["longitude"]),
+                    "longitude": START_POINT["longitude"] + progress * (
+                                END_POINT["longitude"] - START_POINT["longitude"]),
                 }
                 print(current_location)
                 ws.send(json.dumps(current_location))
                 time.sleep(0.5)
 
-            simulation_status["running"] = False    
+            simulation_status["running"] = False
 
         elif message == END and simulation_status["running"]:
             simulation_status["running"] = False
             print("Simulation stopped")
+
 
 def echo_socket(ws):
     print("Echo route connected with client!")
