@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     origin_location = "Varaždin"
     destination_location = "Čakovec"
-    mode_of_transport = "transit"
+    mode_of_transport = "driving"
 
     coordinates = maps_api.get_directions(origin_location, destination_location, mode_of_transport)
     print(coordinates)

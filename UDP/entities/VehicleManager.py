@@ -11,22 +11,32 @@ class VehicleManager:
         self.coordinates = list_of_coordinates
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.UDPServerSocket.bind(('localhost', 50001))
+        self.last_stopped_location = None
+        self.last_index = 0
         print("UDP server up and listening")
 
     def start_vehicle(self, destination_address):
         self.is_running = True
+        self.stop_requested = False
         sequence_number = 1
 
-        # while not self.stop_requested:
-        #     self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
-        #     self.location["latitude"] += 0.001
-        #     self.location["longitude"] += 0.001
-        #     print(f"Vehicle is driving and currently at: {self.location}")
-        #
-        #     sequence_number += 1
-        #     time.sleep(0.5)
+        if self.last_stopped_location:
+            self.location = self.last_stopped_location
+            print(f"Resuming ride from the last stopped location: {self.location}")
 
-        for coordinate in self.coordinates:
+        if self.stop_requested:
+            self.last_stopped_location = self.location
+
+        if self.last_index > 0:
+            self.last_index -= 1
+
+        for i in range(self.last_index, len(self.coordinates)):
+            if self.stop_requested:
+                self.last_stopped_location = self.location
+                self.last_index = i
+                break
+
+            coordinate = self.coordinates[i]
             self.location = {
                 "latitude": coordinate[0],
                 "longitude": coordinate[1]
@@ -36,13 +46,9 @@ class VehicleManager:
             sequence_number += 1
             time.sleep(0.5)
 
-        if self.is_running:
-            self.is_running = False
-            self.stop_requested = False
-            print("Vehicle stopped.")
-
     def stop_vehicle(self, destination_address):
         self.stop_requested = True
+        self.is_running = False
         self.UDPServerSocket.sendto("Vehicle stopped!".encode("utf-8"), destination_address)
 
     def receive_commands(self):
@@ -52,9 +58,6 @@ class VehicleManager:
             address = bytes_address_pair[1]
 
             command = message.lower()
-
-            # client_ip = f"Client IP Address: {address}"
-            # print(f"{message}\n{client_ip}\n-----------------\n")
 
             if command == "start":
                 print(f"Vehicle from this address: {address} started ride.")

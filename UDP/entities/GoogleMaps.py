@@ -22,13 +22,3 @@ class GoogleMapsAPI:
         decoded_coordinates = polyline.decode(overview_polyline)
 
         return decoded_coordinates
-
-
-# maps_api = GoogleMapsAPI()
-#
-# origin_location = "Varaždin"
-# destination_location = "Čakovec"
-# mode_of_transport = "transit"
-#
-# coordinates = maps_api.get_directions(origin_location, destination_location, mode_of_transport)
-# print(coordinates)
