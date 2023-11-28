@@ -1,8 +1,6 @@
 import threading
-
-
-from entities.GoogleMaps import GoogleMapsAPI
-from entities.VehicleManager import VehicleManager
+from entities.google_maps import GoogleMapsAPI
+from entities.vehicle_manager import VehicleManager
 
 if __name__ == "__main__":
     maps_api = GoogleMapsAPI()
@@ -14,8 +12,7 @@ if __name__ == "__main__":
     coordinates = maps_api.get_directions(origin_location, destination_location, mode_of_transport)
     print(coordinates)
 
-    location = {"latitude": 46.305339, "longitude": 16.336864}
-    manager = VehicleManager(location, coordinates)
+    manager = VehicleManager(coordinates)
 
     command_thread = threading.Thread(target=manager.receive_commands)
     command_thread.start()
