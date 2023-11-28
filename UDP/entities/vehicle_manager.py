@@ -8,8 +8,11 @@ class VehicleManager:
         self.is_running = False
         self.stop_requested = False
         self.restart_requested = False
-        self.location = None
         self.coordinates = list_of_coordinates
+        self.location = {
+                "latitude": self.coordinates[0][0],
+                "longitude": self.coordinates[0][1]
+        }
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.UDPServerSocket.bind(('localhost', 50001))
         self.last_stopped_location = None
@@ -21,6 +24,10 @@ class VehicleManager:
         self.is_running = is_running
         self.stop_requested = stop_requested
         self.restart_requested = restart_requested
+
+    def send_current_location(self, address):
+        self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), address)
+        print(f"Vehicle is currently at: {self.location}")
 
     def start_vehicle(self, destination_address):
         self.change_vehicle_state(True, False, False)
@@ -50,6 +57,7 @@ class VehicleManager:
                 "longitude": coordinate[1]
             }
             print(f"Vehicle is driving and currently at: {self.location}")
+
             self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
             sequence_number += 1
             time.sleep(0.5)
@@ -96,9 +104,8 @@ class VehicleManager:
                 print("Restarting vehicle from the beginning...")
                 self.last_stopped_location = None
                 self.last_index = 0
-                self.restart_vehicle_position(address)
-            else:
-                print("Vehicle cannot be restarted. It is not currently stopped.")
+
+            self.restart_vehicle_position(address)
 
     def receive_commands(self):
         while True:
@@ -108,12 +115,11 @@ class VehicleManager:
 
             command = message.lower()
 
-            if command == "start":
-                self.process_start_command(address)
-            elif command == "stop":
-                self.process_stop_command(address)
-            elif command == "restart":
-                self.process_restart_command(address)
+            command_switch = {
+                "start": self.process_start_command,
+                "stop": self.process_stop_command,
+                "restart": self.process_restart_command,
+                "current position": self.send_current_location,
+            }
 
-            reply_msg = "Hello test agent, thanks for messaging!\n-----------------\n"
-            self.UDPServerSocket.sendto(reply_msg.encode("utf-8"), address)
+            command_switch.get(command)(address)
