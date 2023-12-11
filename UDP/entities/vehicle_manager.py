@@ -3,52 +3,102 @@ import threading
 import time
 
 
-class VehicleManager:
-    def __init__(self, list_of_coordinates):
+class VehicleState:
+    def __init__(self):
         self.is_running = False
         self.stop_requested = False
         self.restart_requested = False
-        self.coordinates = list_of_coordinates
-        self.location = {
-                "latitude": self.coordinates[0][0],
-                "longitude": self.coordinates[0][1]
-        }
-        self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.UDPServerSocket.bind(('localhost', 50001))
         self.last_stopped_location = None
         self.last_index = 0
         self.last_command = None
+        self.speed = 0.5
+
+
+class VehicleManager:
+    def __init__(self, list_of_coordinates):
+        self.coordinates = list_of_coordinates
+        self.location = {
+            "latitude": self.coordinates[0][0],
+            "longitude": self.coordinates[0][1]
+        }
+        self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.UDPServerSocket.bind(('localhost', 50001))
+        self.vehicle_states = {}  # Rječnik za praćenje stanja svakog vozila
         print("UDP server up and listening")
 
-    def change_vehicle_state(self, is_running, stop_requested, restart_requested):
-        self.is_running = is_running
-        self.stop_requested = stop_requested
-        self.restart_requested = restart_requested
+    def get_vehicle_state(self, vehicle_id):
+        if vehicle_id not in self.vehicle_states:
+            self.vehicle_states[vehicle_id] = VehicleState()
+        return self.vehicle_states[vehicle_id]
 
-    def send_current_location(self, address):
-        self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), address)
-        print(f"Vehicle is currently at: {self.location}")
+    def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
+        state = self.get_vehicle_state(vehicle_id)
+        state.is_running = is_running
+        state.stop_requested = stop_requested
+        state.restart_requested = restart_requested
 
-    def start_vehicle(self, destination_address):
-        self.change_vehicle_state(True, False, False)
+    def send_current_location(self, address, vehicle_id):
+        self.UDPServerSocket.sendto(f"Location for vehicle {vehicle_id}: {self.location}".encode("utf-8"), address)
+        print(f"Vehicle {vehicle_id} is currently at: {self.location}")
+
+    def process_start_command(self, address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        if state.is_running or state.last_command == "start":
+            print(
+                f"Vehicle {vehicle_id} is already running or has already received a start command. Cannot start again.")
+        else:
+            print(f"Vehicle {vehicle_id} from this address: {address} started ride.")
+            state.last_command = "start"
+            vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
+            vehicle_thread.start()
+
+    def process_stop_command(self, address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        if not state.is_running or state.last_command == "stop":
+            print(f"Vehicle {vehicle_id} is not currently running or has already received a stop command. Cannot stop.")
+        else:
+            print(f"Vehicle {vehicle_id} from this address: {address} stopped ride.")
+            state.last_command = "stop"
+            self.stop_vehicle(address, vehicle_id)
+
+    def process_restart_command(self, address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        if state.last_command == "restart":
+            print(f"Vehicle {vehicle_id} is already restarted!")
+        else:
+            state.last_command = "restart"
+            if state.stop_requested:
+                print(f"Restarting vehicle {vehicle_id} from the beginning...")
+                state.last_stopped_location = None
+                state.last_index = 0
+
+            self.restart_vehicle_position(address, vehicle_id)
+
+    def start_vehicle(self, destination_address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        self.change_vehicle_state(vehicle_id, True, False, False)
         sequence_number = 1
 
-        if self.last_stopped_location:
-            self.location = self.last_stopped_location
+        if state.last_stopped_location:
+            self.location = state.last_stopped_location
             print(f"Resuming ride from the last stopped location: {self.location}")
 
-        if self.last_index > 0:
-            self.last_index -= 1
+        if state.last_index > 0:
+            state.last_index -= 1
 
-        for i in range(self.last_index, len(self.coordinates)):
-            if self.restart_requested:
-                self.last_stopped_location = None
-                self.last_index = 0
+        for i in range(state.last_index, len(self.coordinates)):
+            if state.restart_requested:
+                state.last_stopped_location = None
+                state.last_index = 0
                 break
 
-            if self.stop_requested:
-                self.last_stopped_location = self.location
-                self.last_index = i
+            if state.stop_requested:
+                state.last_stopped_location = self.location
+                state.last_index = i
                 break
 
             coordinate = self.coordinates[i]
@@ -56,18 +106,23 @@ class VehicleManager:
                 "latitude": coordinate[0],
                 "longitude": coordinate[1]
             }
-            print(f"Vehicle is driving and currently at: {self.location}")
+            print(f"Vehicle {vehicle_id} is driving and currently at: {self.location}")
 
             self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
             sequence_number += 1
-            time.sleep(0.5)
 
-    def stop_vehicle(self, destination_address):
-        self.change_vehicle_state(False, True, False)
-        self.UDPServerSocket.sendto("Vehicle stopped!".encode("utf-8"), destination_address)
+            time.sleep(state.speed)
 
-    def restart_vehicle_position(self, destination_address):
-        self.change_vehicle_state(False, True, True)
+    def stop_vehicle(self, destination_address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        self.change_vehicle_state(vehicle_id, False, True, False)
+        self.UDPServerSocket.sendto(f"Vehicle {vehicle_id} stopped!".encode("utf-8"), destination_address)
+
+    def restart_vehicle_position(self, destination_address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+
+        self.change_vehicle_state(vehicle_id, False, True, True)
 
         coordinate = self.coordinates[0]
         self.location = {
@@ -75,37 +130,8 @@ class VehicleManager:
             "longitude": coordinate[1]
         }
 
-        self.last_command = "restart"
+        state.last_command = "restart"
         self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
-
-    def process_start_command(self, address):
-        if self.is_running or self.last_command == "start":
-            print("Vehicle is already running or has already received a start command. Cannot start again.")
-        else:
-            print(f"Vehicle from this address: {address} started ride.")
-            self.last_command = "start"
-            vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address,))
-            vehicle_thread.start()
-
-    def process_stop_command(self, address):
-        if not self.is_running or self.last_command == "stop":
-            print("Vehicle is not currently running or has already received a stop command. Cannot stop.")
-        else:
-            print(f"Vehicle from this address: {address} stopped ride.")
-            self.last_command = "stop"
-            self.stop_vehicle(address)
-
-    def process_restart_command(self, address):
-        if self.last_command == "restart":
-            print("Vehicle is already restarted!")
-        else:
-            self.last_command = "restart"
-            if self.stop_requested:
-                print("Restarting vehicle from the beginning...")
-                self.last_stopped_location = None
-                self.last_index = 0
-
-            self.restart_vehicle_position(address)
 
     def receive_commands(self):
         while True:
@@ -113,13 +139,20 @@ class VehicleManager:
             message = bytes_address_pair[0].decode("utf-8")
             address = bytes_address_pair[1]
 
-            command = message.lower()
+            parts = message.split(' ')
+            print(parts)
+            if len(parts) != 2:
+                continue
+
+            command, vehicle_id = parts
+            command = command.lower()
 
             command_switch = {
                 "start": self.process_start_command,
                 "stop": self.process_stop_command,
                 "restart": self.process_restart_command,
-                "current position": self.send_current_location,
+                "current-position": self.send_current_location,
             }
 
-            command_switch.get(command)(address)
+            # Pass both command and vehicle ID to the corresponding handler
+            command_switch.get(command, lambda _: None)(address, vehicle_id)
