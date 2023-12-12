@@ -1,6 +1,10 @@
 import socket
 import threading
 import time
+import os
+from dotenv import load_dotenv
+
+from UDP.entities.firebase_admin_manager import FirebaseAdminManager
 
 
 class VehicleState:
@@ -11,7 +15,7 @@ class VehicleState:
         self.last_stopped_location = None
         self.last_index = 0
         self.last_command = None
-        self.speed = 0.5
+        self.speed = 1.5
 
 
 class VehicleManager:
@@ -25,6 +29,12 @@ class VehicleManager:
         self.UDPServerSocket.bind(('localhost', 50001))
         self.vehicle_states = {}  # Rječnik za praćenje stanja svakog vozila
         print("UDP server up and listening")
+        print("---------------------------")
+
+        load_dotenv()
+        firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
+        firebase_database_url = os.getenv("DATABASE_URL")
+        self.firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
@@ -109,6 +119,8 @@ class VehicleManager:
             print(f"Vehicle {vehicle_id} is driving and currently at: {self.location}")
 
             self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
+            data = {'latitude': self.location["latitude"], 'longitude': self.location["longitude"]}
+            self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
 
             time.sleep(state.speed)
@@ -132,6 +144,9 @@ class VehicleManager:
 
         state.last_command = "restart"
         self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
+
+        data = {'latitude': self.location["latitude"], 'longitude': self.location["longitude"]}
+        self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
 
     def receive_commands(self):
         while True:
