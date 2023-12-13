@@ -23,7 +23,7 @@ class VehicleState:
         self.last_stopped_location = None
         self.last_index = 0
         self.last_command = None
-        self.speed = 1.5
+        self.speed = 1
         self.coordinates = []
         self.location = firebaseManager.get_vehicle_current_position(vehicle_id)
 
@@ -32,12 +32,8 @@ class VehicleState:
 
 
 class VehicleManager:
-    def __init__(self, list_of_coordinates):
-        self.coordinates = list_of_coordinates
-        self.location = {
-            "latitude": self.coordinates[0][0],
-            "longitude": self.coordinates[0][1]
-        }
+    def __init__(self):
+        self.coordinates = []
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.UDPServerSocket.bind(('localhost', 50001))
         self.vehicle_states = {}  # Rječnik za praćenje stanja svakog vozila
@@ -47,8 +43,6 @@ class VehicleManager:
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
-            state = self.vehicle_states[vehicle_id]
-            state.set_route(self.coordinates)
         return self.vehicle_states[vehicle_id]
 
     def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
@@ -59,8 +53,12 @@ class VehicleManager:
 
     def change_vehicle_route(self, vehicle_id, destination):
         state = self.get_vehicle_state(vehicle_id)
-        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(), f"{state.location["latitude"]}, {state.location["longitude"]}", destination)
-        state.set_route(coordinates)
+        current_location = firebaseManager.get_vehicle_current_position(vehicle_id)
+        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(), f"{current_location["latitude"]}, {state.location["longitude"]}", destination)
+        if len(coordinates) > 0:
+            state.set_route(coordinates)
+        else:
+            print(f"Cant find destination: {destination} as requested by: {vehicle_id}")
 
     def send_current_location(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
@@ -70,14 +68,17 @@ class VehicleManager:
     def process_start_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if state.is_running or state.last_command == "start":
-            print(
-                f"Vehicle {vehicle_id} is already running or has already received a start command. Cannot start again.")
+        if len(state.coordinates) != 0:
+            if state.is_running or state.last_command == "start":
+                print(
+                    f"Vehicle {vehicle_id} is already running or has already received a start command. Cannot start again.")
+            else:
+                print(f"Vehicle {vehicle_id} from this address: {address} started ride.")
+                state.last_command = "start"
+                vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
+                vehicle_thread.start()
         else:
-            print(f"Vehicle {vehicle_id} from this address: {address} started ride.")
-            state.last_command = "start"
-            vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
-            vehicle_thread.start()
+            print(f"There is no destination set for {state.vehicle_id}")
 
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
