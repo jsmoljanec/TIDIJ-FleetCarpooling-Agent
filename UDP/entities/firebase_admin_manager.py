@@ -14,3 +14,10 @@ class FirebaseAdminManager:
 
     def update_vehicle_data(self, vehicle_id, data):
         self.db_reference.child(f'Vehicles/{vehicle_id}').update(data)
+
+    def get_vehicle_current_position(self, vehicle_id):
+        vehicle_data = self.db_reference.child(f'Vehicles/{vehicle_id}').get()
+        return {
+            "latitude": vehicle_data.get("latitude", 0.0),
+            "longitude": vehicle_data.get("longitude", 0.0)
+        }

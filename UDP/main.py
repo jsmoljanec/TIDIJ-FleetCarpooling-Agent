@@ -10,7 +10,7 @@ if __name__ == "__main__":
     mode_of_transport = "driving"
 
     coordinates = maps_api.get_directions(origin_location, destination_location, mode_of_transport)
-    print(coordinates)
+    # print(coordinates)
 
     manager = VehicleManager(coordinates)
 

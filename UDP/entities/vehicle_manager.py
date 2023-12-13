@@ -5,10 +5,18 @@ import os
 from dotenv import load_dotenv
 
 from UDP.entities.firebase_admin_manager import FirebaseAdminManager
+from UDP.entities.google_maps import GoogleMapsAPI
+
+load_dotenv()
+firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
+firebase_database_url = os.getenv("DATABASE_URL")
+firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
+maps_api = GoogleMapsAPI()
 
 
 class VehicleState:
-    def __init__(self):
+    def __init__(self, vehicle_id):
+        self.vehicle_id = vehicle_id
         self.is_running = False
         self.stop_requested = False
         self.restart_requested = False
@@ -16,6 +24,11 @@ class VehicleState:
         self.last_index = 0
         self.last_command = None
         self.speed = 1.5
+        self.coordinates = []
+        self.location = firebaseManager.get_vehicle_current_position(vehicle_id)
+
+    def set_route(self, coordinates):
+        self.coordinates = coordinates
 
 
 class VehicleManager:
@@ -31,14 +44,11 @@ class VehicleManager:
         print("UDP server up and listening")
         print("---------------------------")
 
-        load_dotenv()
-        firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
-        firebase_database_url = os.getenv("DATABASE_URL")
-        self.firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
-
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
-            self.vehicle_states[vehicle_id] = VehicleState()
+            self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
+            state = self.vehicle_states[vehicle_id]
+            state.set_route(self.coordinates)
         return self.vehicle_states[vehicle_id]
 
     def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
@@ -47,9 +57,15 @@ class VehicleManager:
         state.stop_requested = stop_requested
         state.restart_requested = restart_requested
 
+    def change_vehicle_route(self, vehicle_id, destination):
+        state = self.get_vehicle_state(vehicle_id)
+        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(), f"{state.location["latitude"]}, {state.location["longitude"]}", destination)
+        state.set_route(coordinates)
+
     def send_current_location(self, address, vehicle_id):
-        self.UDPServerSocket.sendto(f"Location for vehicle {vehicle_id}: {self.location}".encode("utf-8"), address)
-        print(f"Vehicle {vehicle_id} is currently at: {self.location}")
+        state = self.get_vehicle_state(vehicle_id)
+        self.UDPServerSocket.sendto(f"Location for vehicle {vehicle_id}: {state.location}".encode("utf-8"), address)
+        print(f"Vehicle {vehicle_id} is currently at: {state.location}")
 
     def process_start_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
@@ -87,6 +103,9 @@ class VehicleManager:
 
             self.restart_vehicle_position(address, vehicle_id)
 
+    def process_set_destination(self, destination_address, vehicle_id, destination):
+        state = self.get_vehicle_state(vehicle_id)
+
     def start_vehicle(self, destination_address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
@@ -94,33 +113,33 @@ class VehicleManager:
         sequence_number = 1
 
         if state.last_stopped_location:
-            self.location = state.last_stopped_location
-            print(f"Resuming ride from the last stopped location: {self.location}")
+            state.location = state.last_stopped_location
+            print(f"Resuming ride from the last stopped location: {state.location}")
 
         if state.last_index > 0:
             state.last_index -= 1
 
-        for i in range(state.last_index, len(self.coordinates)):
+        for i in range(state.last_index, len(state.coordinates)):
             if state.restart_requested:
                 state.last_stopped_location = None
                 state.last_index = 0
                 break
 
             if state.stop_requested:
-                state.last_stopped_location = self.location
+                state.last_stopped_location = state.location
                 state.last_index = i
                 break
 
-            coordinate = self.coordinates[i]
-            self.location = {
+            coordinate = state.coordinates[i]
+            state.location = {
                 "latitude": coordinate[0],
                 "longitude": coordinate[1]
             }
-            print(f"Vehicle {vehicle_id} is driving and currently at: {self.location}")
+            print(f"Vehicle {vehicle_id} is driving and currently at: {state.location}")
 
-            self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
-            data = {'latitude': self.location["latitude"], 'longitude': self.location["longitude"]}
-            self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+            self.UDPServerSocket.sendto(f"Location: {state.location}".encode("utf-8"), destination_address)
+            data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
+            firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
 
             time.sleep(state.speed)
@@ -136,17 +155,17 @@ class VehicleManager:
 
         self.change_vehicle_state(vehicle_id, False, True, True)
 
-        coordinate = self.coordinates[0]
-        self.location = {
+        coordinate = state.coordinates[0]
+        state.location = {
             "latitude": coordinate[0],
             "longitude": coordinate[1]
         }
 
         state.last_command = "restart"
-        self.UDPServerSocket.sendto(f"Location: {self.location}".encode("utf-8"), destination_address)
+        self.UDPServerSocket.sendto(f"Location: {state.location}".encode("utf-8"), destination_address)
 
-        data = {'latitude': self.location["latitude"], 'longitude': self.location["longitude"]}
-        self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+        data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
+        firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
 
     def receive_commands(self):
         while True:
@@ -156,18 +175,22 @@ class VehicleManager:
 
             parts = message.split(' ')
             print(parts)
-            if len(parts) != 2:
-                continue
+            if len(parts) == 2:
+                command, vehicle_id = parts
+                command = command.lower()
 
-            command, vehicle_id = parts
-            command = command.lower()
+                command_switch = {
+                    "start": self.process_start_command,
+                    "stop": self.process_stop_command,
+                    "restart": self.process_restart_command,
+                    "current-position": self.send_current_location,
+                }
 
-            command_switch = {
-                "start": self.process_start_command,
-                "stop": self.process_stop_command,
-                "restart": self.process_restart_command,
-                "current-position": self.send_current_location,
-            }
+                # Pass both command and vehicle ID to the corresponding handler
+                command_switch.get(command, lambda _: None)(address, vehicle_id)
+            elif len(parts) == 3:
+                command, destination, vehicle_id = parts
+                command = command.lower()
 
-            # Pass both command and vehicle ID to the corresponding handler
-            command_switch.get(command, lambda _: None)(address, vehicle_id)
+                if command == "set-destination":
+                    self.change_vehicle_route(vehicle_id, destination)
