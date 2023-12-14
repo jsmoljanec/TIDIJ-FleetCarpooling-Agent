@@ -35,7 +35,7 @@ class VehicleManager:
     def __init__(self):
         self.coordinates = []
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.UDPServerSocket.bind(('localhost', 50001))
+        self.UDPServerSocket.bind(('192.168.174.184', 50001))
         self.vehicle_states = {}  # Rječnik za praćenje stanja svakog vozila
         print("UDP server up and listening")
         print("---------------------------")
