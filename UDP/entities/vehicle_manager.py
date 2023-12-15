@@ -7,29 +7,13 @@ from dotenv import load_dotenv
 from .firebase_admin_manager import FirebaseAdminManager
 from .google_maps import GoogleMapsAPI
 from .strings import Strings
+from .vehicle_state import VehicleState
 
 load_dotenv()
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
 firebase_database_url = os.getenv("DATABASE_URL")
 firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
 maps_api = GoogleMapsAPI()
-
-
-class VehicleState:
-    def __init__(self, vehicle_id):
-        self.vehicle_id = vehicle_id
-        self.is_running = False
-        self.stop_requested = False
-        self.restart_requested = False
-        self.last_stopped_location = None
-        self.last_index = 0
-        self.last_command = None
-        self.speed = 1
-        self.coordinates = []
-        self.location = firebaseManager.get_vehicle_current_position(vehicle_id)
-
-    def set_route(self, coordinates):
-        self.coordinates = coordinates
 
 
 class VehicleManager:
@@ -50,6 +34,7 @@ class VehicleManager:
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
+            self.vehicle_states[vehicle_id].set_location(firebaseManager.get_vehicle_current_position(vehicle_id))
         return self.vehicle_states[vehicle_id]
 
     def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
