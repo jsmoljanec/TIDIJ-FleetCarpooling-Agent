@@ -4,8 +4,9 @@ import time
 import os
 from dotenv import load_dotenv
 
-from UDP.entities.firebase_admin_manager import FirebaseAdminManager
-from UDP.entities.google_maps import GoogleMapsAPI
+from .firebase_admin_manager import FirebaseAdminManager
+from .google_maps import GoogleMapsAPI
+from .strings import Strings
 
 load_dotenv()
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
@@ -32,16 +33,16 @@ class VehicleState:
 
 
 class VehicleManager:
-    def __init__(self, device):
+    def __init__(self, device, port=50001):
         self.coordinates = []
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
-            self.UDPServerSocket.bind((device, 50001))
-            print(f"Agent up and listening on {device}:50001")
-            print("---------------------------")
+            self.UDPServerSocket.bind((device, port))
+            print(Strings.AGENT_UP.format(device, port))
+            print(Strings.MESSAGE_SEPARATOR)
         except socket.error as e:
-            print(f"Error binding UDP socket: {e}")
+            print(Strings.ERROR_UDP_BINDING.format(e))
             raise e
 
         self.vehicle_states = {}
@@ -60,55 +61,56 @@ class VehicleManager:
     def change_vehicle_route(self, vehicle_id, destination):
         state = self.get_vehicle_state(vehicle_id)
         current_location = firebaseManager.get_vehicle_current_position(vehicle_id)
-        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(), f"{current_location["latitude"]}, {state.location["longitude"]}", destination)
+        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(),
+                                                   f"{current_location['latitude']}, {state.location['longitude']}",
+                                                   destination)
         if len(coordinates) > 0:
             state.set_route(coordinates)
         else:
-            print(f"Cant find destination: {destination} as requested by: {vehicle_id}")
+            print(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id))
 
     def send_current_location(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        self.UDPServerSocket.sendto(f"Location for vehicle {vehicle_id}: {state.location}".encode("utf-8"), address)
-        print(f"Vehicle {vehicle_id} is currently at: {state.location}")
+        self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), address)
+        print(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location))
 
     def process_start_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
         if len(state.coordinates) != 0:
-            if state.is_running or state.last_command == "start":
-                print(
-                    f"Vehicle {vehicle_id} is already running or has already received a start command. Cannot start again.")
+            if state.is_running or state.last_command == Strings.START_COMMAND:
+                print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
             else:
-                print(f"Vehicle {vehicle_id} from this address: {address} started ride.")
-                state.last_command = "start"
+                print(Strings.VEHICLE_STARTED.format(vehicle_id))
+                state.last_command = Strings.START_COMMAND
                 vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
                 vehicle_thread.start()
         else:
-            print(f"There is no destination set for {state.vehicle_id}")
+            print(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id))
 
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if not state.is_running or state.last_command == "stop":
-            print(f"Vehicle {vehicle_id} is not currently running or has already received a stop command. Cannot stop.")
+        if not state.is_running or state.last_command == Strings.STOP_COMMAND:
+            print(Strings.VEHICLE_NOT_RUNNING.format(vehicle_id))
         else:
-            print(f"Vehicle {vehicle_id} from this address: {address} stopped ride.")
-            state.last_command = "stop"
+            print(Strings.VEHICLE_STOPPED.format(vehicle_id))
+            state.last_command = Strings.STOP_COMMAND
             self.stop_vehicle(address, vehicle_id)
 
     def process_restart_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
         if not state.coordinates:
-            print(f"Vehicle {vehicle_id} cannot be to restarted.")
+            print(Strings.VEHICLE_CANNOT_RESTART.format(vehicle_id))
             return
 
-        if state.last_command == "restart":
-            print(f"Vehicle {vehicle_id} is already restarted!")
+        if state.last_command == Strings.RESTART_COMMAND:
+            print(Strings.VEHICLE_ALREADY_RESTARTED.format(vehicle_id))
         else:
-            state.last_command = "restart"
+            state.last_command = Strings.RESTART_COMMAND
             if state.stop_requested:
-                print(f"Restarting vehicle {vehicle_id} from the beginning...")
+                print(Strings.VEHICLE_RESTARTED.format(vehicle_id))
                 state.last_stopped_location = None
                 state.last_index = 0
 
@@ -125,7 +127,7 @@ class VehicleManager:
 
         if state.last_stopped_location:
             state.location = state.last_stopped_location
-            print(f"Resuming ride from the last stopped location: {state.location}")
+            print(Strings.VEHICLE_RESUMED.format(state.location))
 
         if state.last_index > 0:
             state.last_index -= 1
@@ -146,8 +148,8 @@ class VehicleManager:
                 "latitude": coordinate[0],
                 "longitude": coordinate[1]
             }
-            print(f"Vehicle {vehicle_id} is driving and currently at: {state.location}")
-            self.UDPServerSocket.sendto(f"Location: {state.location}".encode("utf-8"), destination_address)
+            print(Strings.VEHICLE_DRIVING_LOCATION.format(vehicle_id, state.location))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), destination_address)
             data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
             firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
@@ -155,10 +157,8 @@ class VehicleManager:
             time.sleep(state.speed)
 
     def stop_vehicle(self, destination_address, vehicle_id):
-        state = self.get_vehicle_state(vehicle_id)
-
         self.change_vehicle_state(vehicle_id, False, True, False)
-        self.UDPServerSocket.sendto(f"Vehicle {vehicle_id} stopped!".encode("utf-8"), destination_address)
+        self.UDPServerSocket.sendto(Strings.VEHICLE_STOPPED.format(vehicle_id).encode("utf-8"), destination_address)
 
     def restart_vehicle_position(self, destination_address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
@@ -171,8 +171,8 @@ class VehicleManager:
             "longitude": coordinate[1]
         }
 
-        state.last_command = "restart"
-        self.UDPServerSocket.sendto(f"Location: {state.location}".encode("utf-8"), destination_address)
+        state.last_command = Strings.RESTART_COMMAND
+        self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), destination_address)
 
         data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
         firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
@@ -190,10 +190,10 @@ class VehicleManager:
                 command = command.lower()
 
                 command_switch = {
-                    "start": self.process_start_command,
-                    "stop": self.process_stop_command,
-                    "restart": self.process_restart_command,
-                    "current-position": self.send_current_location,
+                    Strings.START_COMMAND: self.process_start_command,
+                    Strings.STOP_COMMAND: self.process_stop_command,
+                    Strings.RESTART_COMMAND: self.process_restart_command,
+                    Strings.CURRENT_POSITION_COMMAND: self.send_current_location,
                 }
 
                 # Pass both command and vehicle ID to the corresponding handler
@@ -202,5 +202,5 @@ class VehicleManager:
                 command, destination, vehicle_id = parts
                 command = command.lower()
 
-                if command == "set-destination":
+                if command == Strings.SET_DESTINATION_COMMAND:
                     self.change_vehicle_route(vehicle_id, destination)

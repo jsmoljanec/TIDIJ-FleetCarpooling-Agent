@@ -1,8 +1,9 @@
 import googlemaps
-from datetime import datetime
-from dotenv import load_dotenv
 import os
 import polyline
+from datetime import datetime
+from dotenv import load_dotenv
+from .strings import Strings
 
 
 class GoogleMapsAPI:
@@ -12,9 +13,7 @@ class GoogleMapsAPI:
         self.api_key = os.getenv("GOOGLE_MAPS_API_KEY")
 
         if not self.api_key:
-            raise ValueError(
-                "Valid Google Maps API key is not provided. Please set the GOOGLE_MAPS_API_KEY environment variable "
-                "with valid API key.")
+            raise ValueError(Strings.ERROR_GOOGLE_MAPS_API_KEY)
 
         self.gmaps = googlemaps.Client(key=self.api_key)
 
@@ -25,7 +24,7 @@ class GoogleMapsAPI:
             directions_result = self.gmaps.directions(origin, destination, mode=mode, departure_time=now)
 
             if not directions_result:
-                raise Exception("No directions found")
+                raise Exception(Strings.ERROR_GOOGLE_MAPS_ROUTE)
 
             overview_polyline = directions_result[0]['overview_polyline']['points']
             decoded_coordinates = polyline.decode(overview_polyline)
