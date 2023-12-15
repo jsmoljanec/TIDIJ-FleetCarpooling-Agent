@@ -32,13 +32,19 @@ class VehicleState:
 
 
 class VehicleManager:
-    def __init__(self):
+    def __init__(self, device):
         self.coordinates = []
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.UDPServerSocket.bind(('192.168.174.184', 50001))
-        self.vehicle_states = {}  # Rječnik za praćenje stanja svakog vozila
-        print("UDP server up and listening")
-        print("---------------------------")
+
+        try:
+            self.UDPServerSocket.bind((device, 50001))
+            print(f"Agent up and listening on {device}:50001")
+            print("---------------------------")
+        except socket.error as e:
+            print(f"Error binding UDP socket: {e}")
+            raise e
+
+        self.vehicle_states = {}
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
@@ -93,6 +99,10 @@ class VehicleManager:
     def process_restart_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
+        if not state.coordinates:
+            print(f"Vehicle {vehicle_id} cannot be to restarted.")
+            return
+
         if state.last_command == "restart":
             print(f"Vehicle {vehicle_id} is already restarted!")
         else:
@@ -137,7 +147,6 @@ class VehicleManager:
                 "longitude": coordinate[1]
             }
             print(f"Vehicle {vehicle_id} is driving and currently at: {state.location}")
-
             self.UDPServerSocket.sendto(f"Location: {state.location}".encode("utf-8"), destination_address)
             data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
             firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
@@ -175,7 +184,7 @@ class VehicleManager:
             address = bytes_address_pair[1]
 
             parts = message.split(' ')
-            print(parts)
+            # print(parts)
             if len(parts) == 2:
                 command, vehicle_id = parts
                 command = command.lower()
