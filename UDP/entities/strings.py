@@ -24,6 +24,7 @@ class Strings:
     VEHICLE_ALREADY_RESTARTED = "Vehicle {} is already restarted!"
     VEHICLE_RESUMED = "Resuming ride from the last stopped location: {}."
     VEHICLE_DRIVING_LOCATION = "Vehicle {} is driving and currently at: {}."
+    VEHICLE_ROUTE_SET = "Vehicle {} has set destination to {}."
 
     # Error handling messages
     ERROR_UDP_BINDING = "Error binding UDP socket: {}."

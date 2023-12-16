@@ -18,7 +18,6 @@ maps_api = GoogleMapsAPI()
 
 class VehicleManager:
     def __init__(self, device, port=50001):
-        self.coordinates = []
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
@@ -51,6 +50,7 @@ class VehicleManager:
                                                    destination)
         if len(coordinates) > 0:
             state.set_route(coordinates)
+            print(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination))
         else:
             print(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id))
 
@@ -100,9 +100,6 @@ class VehicleManager:
                 state.last_index = 0
 
             self.restart_vehicle_position(address, vehicle_id)
-
-    def process_set_destination(self, destination_address, vehicle_id, destination):
-        state = self.get_vehicle_state(vehicle_id)
 
     def start_vehicle(self, destination_address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)

@@ -17,7 +17,7 @@ class GoogleMapsAPI:
 
         self.gmaps = googlemaps.Client(key=self.api_key)
 
-    def get_directions(self, origin, destination, mode="transit"):
+    def get_directions(self, origin, destination, mode="driving"):
         try:
             now = datetime.now()
 
