@@ -32,5 +32,5 @@ class GoogleMapsAPI:
             return decoded_coordinates
 
         except Exception as e:
-            print(f"Error getting directions: {e}")
+            print(Strings.ERROR_GOOGLE_DIRECTIONS.format(e))
             return []

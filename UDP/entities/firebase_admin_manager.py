@@ -2,6 +2,8 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
+from .strings import Strings
+
 
 class FirebaseAdminManager:
     def __init__(self, credentials_path, database_url):
@@ -10,21 +12,21 @@ class FirebaseAdminManager:
             firebase_admin.initialize_app(cred, {'databaseURL': database_url})
             self.db_reference = db.reference()
         except Exception as e:
-            print(f"Error initializing Firebase app: {e}")
+            print(Strings.ERROR_FIREBASE.format(e))
             raise e
 
     def get_all_vehicle_data(self):
         try:
             return self.db_reference.child('Vehicles').get()
         except Exception as e:
-            print(f"Error getting all vehicle data: {e}")
+            print(Strings.ERROR_FIREBASE_GET_VEHICLE_DATA.format(e))
             raise e
 
     def update_vehicle_data(self, vehicle_id, data):
         try:
             self.db_reference.child(f'Vehicles/{vehicle_id}').update(data)
         except Exception as e:
-            print(f"Error updating vehicle data: {e}")
+            print(Strings.ERROR_FIREBASE_UPDATE_VEHICLE_DATA.format(e))
             raise e
 
     def get_vehicle_current_position(self, vehicle_id):
@@ -35,5 +37,5 @@ class FirebaseAdminManager:
                 "longitude": vehicle_data.get("longitude", 0.0)
             }
         except Exception as e:
-            print(f"Error getting vehicle current position: {e}")
+            print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCATION.format(e))
             raise e
