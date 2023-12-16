@@ -1,18 +1,12 @@
+import sys
 import threading
-from entities.google_maps import GoogleMapsAPI
 from entities.vehicle_manager import VehicleManager
 
+
 if __name__ == "__main__":
-    maps_api = GoogleMapsAPI()
+    host = '127.0.0.1' if len(sys.argv) == 1 else sys.argv[1]
 
-    origin_location = "Varaždin"
-    destination_location = "Čakovec"
-    mode_of_transport = "driving"
-
-    coordinates = maps_api.get_directions(origin_location, destination_location, mode_of_transport)
-    print(coordinates)
-
-    manager = VehicleManager(coordinates)
+    manager = VehicleManager(host)
 
     command_thread = threading.Thread(target=manager.receive_commands)
     command_thread.start()
