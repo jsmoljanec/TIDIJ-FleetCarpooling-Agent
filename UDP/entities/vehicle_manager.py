@@ -42,7 +42,7 @@ class VehicleManager:
         state.stop_requested = stop_requested
         state.restart_requested = restart_requested
 
-    def change_vehicle_route(self, vehicle_id, destination):
+    def change_vehicle_route(self, vehicle_id, destination, address):
         state = self.get_vehicle_state(vehicle_id)
         current_location = firebaseManager.get_vehicle_current_position(vehicle_id)
         coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(),
@@ -51,8 +51,11 @@ class VehicleManager:
         if len(coordinates) > 0:
             state.set_route(coordinates)
             print(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination).encode("utf-8"), address)
+
         else:
             print(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id))
+            self.UDPServerSocket.sendto(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id).encode("utf-8"), address)
 
     def send_current_location(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
@@ -65,37 +68,45 @@ class VehicleManager:
         if len(state.coordinates) != 0:
             if state.is_running or state.last_command == Strings.START_COMMAND:
                 print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
+                self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id).encode("utf-8"), address)
             else:
                 print(Strings.VEHICLE_STARTED.format(vehicle_id))
+                self.UDPServerSocket.sendto(Strings.VEHICLE_STARTED.format(vehicle_id).encode("utf-8"), address)
                 state.last_command = Strings.START_COMMAND
                 vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
                 vehicle_thread.start()
         else:
             print(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id).encode("utf-8"), address)
 
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
         if not state.is_running or state.last_command == Strings.STOP_COMMAND:
             print(Strings.VEHICLE_NOT_RUNNING.format(vehicle_id))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_NOT_RUNNING.format(vehicle_id).encode("utf-8"), address)
         else:
             print(Strings.VEHICLE_STOPPED.format(vehicle_id))
             state.last_command = Strings.STOP_COMMAND
             self.stop_vehicle(address, vehicle_id)
+            self.UDPServerSocket.sendto(Strings.VEHICLE_STOPPED.format(vehicle_id).encode("utf-8"), address)
 
     def process_restart_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
         if not state.coordinates:
             print(Strings.VEHICLE_CANNOT_RESTART.format(vehicle_id))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_CANNOT_RESTART.format(vehicle_id).encode("utf-8"), address)
             return
 
         if state.last_command == Strings.RESTART_COMMAND:
             print(Strings.VEHICLE_ALREADY_RESTARTED.format(vehicle_id))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RESTARTED.format(vehicle_id).encode("utf-8"), address)
         else:
             state.last_command = Strings.RESTART_COMMAND
             if state.stop_requested:
                 print(Strings.VEHICLE_RESTARTED.format(vehicle_id))
+                self.UDPServerSocket.sendto(Strings.VEHICLE_RESTARTED.format(vehicle_id).encode("utf-8"),address)
                 state.last_stopped_location = None
                 state.last_index = 0
 
@@ -109,7 +120,8 @@ class VehicleManager:
 
         if state.last_stopped_location:
             state.location = state.last_stopped_location
-            print(Strings.VEHICLE_RESUMED.format(state.location))
+            print(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location).encode("utf-8"), destination_address)
 
         if state.last_index > 0:
             state.last_index -= 1
@@ -154,7 +166,7 @@ class VehicleManager:
         }
 
         state.last_command = Strings.RESTART_COMMAND
-        self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), destination_address)
+        self.UDPServerSocket.sendto(Strings.VEHICLE_RESTARTED.format(vehicle_id).encode("utf-8"), destination_address)
 
         data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
         firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
@@ -166,7 +178,6 @@ class VehicleManager:
             address = bytes_address_pair[1]
 
             parts = message.split(' ')
-            # print(parts)
             if len(parts) == 2:
                 command, vehicle_id = parts
                 command = command.lower()
@@ -185,4 +196,4 @@ class VehicleManager:
                 command = command.lower()
 
                 if command == Strings.SET_DESTINATION_COMMAND:
-                    self.change_vehicle_route(vehicle_id, destination)
+                    self.change_vehicle_route(vehicle_id, destination, address)
