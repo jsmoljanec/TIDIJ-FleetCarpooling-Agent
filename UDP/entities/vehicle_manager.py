@@ -107,7 +107,7 @@ class VehicleManager:
             state.last_command = Strings.RESTART_COMMAND
             if state.stop_requested:
                 print(Strings.VEHICLE_RESTARTED.format(vehicle_id))
-                self.UDPServerSocket.sendto(Strings.VEHICLE_RESTARTED.format(vehicle_id).encode("utf-8"),address)
+                self.UDPServerSocket.sendto(Strings.VEHICLE_RESTARTED.format(vehicle_id).encode("utf-8"), address)
                 state.last_stopped_location = None
                 state.last_index = 0
 
@@ -122,7 +122,9 @@ class VehicleManager:
             state.set_vehicle_lock_status(True)
             data = {'locked': 'true'}
         firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
-        print(print(Strings.VEHICLE_LOCKED.format(vehicle_id)) if state.locked is True else print(Strings.VEHICLE_UNLOCKED.format(vehicle_id)))
+        check_string = Strings.VEHICLE_LOCKED.format(vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
+        print(check_string)
+        self.UDPServerSocket.sendto(check_string.encode("utf-8"), address)
 
     def start_vehicle(self, destination_address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
