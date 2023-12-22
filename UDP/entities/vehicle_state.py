@@ -10,9 +10,16 @@ class VehicleState:
         self.speed = 1
         self.coordinates = []
         self.location = None
+        self.locked = None
 
     def set_route(self, coordinates):
         self.coordinates = coordinates
 
     def set_location(self, location):
         self.location = location
+
+    def set_vehicle_lock_status(self, lock):
+        self.locked = lock
+
+    def is_vehicle_locked(self):
+        return self.locked is True

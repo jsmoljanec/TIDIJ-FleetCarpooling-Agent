@@ -8,6 +8,7 @@ class Strings:
     RESTART_COMMAND = "restart"
     CURRENT_POSITION_COMMAND = "current-position"
     SET_DESTINATION_COMMAND = "set-destination"
+    LOCK_COMMAND = "lock"
 
     # Agent control messages
     AGENT_UP = "Agent up and listening on {}:{}"
@@ -25,6 +26,8 @@ class Strings:
     VEHICLE_RESUMED = "[1001] Vehicle [{}] resumes ride from the last stopped location: {}."
     VEHICLE_DRIVING_LOCATION = "[1010] Vehicle [{}] is driving and currently at: {}."
     VEHICLE_ROUTE_SET = "[1011] Vehicle [{}] has set destination to {}."
+    VEHICLE_LOCKED = "[1100] Vehicle [{}] is locked."
+    VEHICLE_UNLOCKED = "[1101] Vehicle [{}] is unlocked."
 
     # Error handling messages
     ERROR_UDP_BINDING = "Error binding UDP socket: {}."
@@ -36,3 +39,4 @@ class Strings:
     ERROR_FIREBASE_GET_VEHICLE_DATA = "Error getting all vehicle data: {}."
     ERROR_FIREBASE_UPDATE_VEHICLE_DATA = "Error updating vehicle data: {}."
     ERROR_FIREBASE_GET_VEHICLE_LOCATION = "Error getting vehicle current position: {}."
+    ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS = "Error getting vehicle lock status: {}."

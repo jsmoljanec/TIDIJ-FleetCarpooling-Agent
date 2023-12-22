@@ -34,6 +34,7 @@ class VehicleManager:
         if vehicle_id not in self.vehicle_states:
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
             self.vehicle_states[vehicle_id].set_location(firebaseManager.get_vehicle_current_position(vehicle_id))
+            self.vehicle_states[vehicle_id].set_vehicle_lock_status(firebaseManager.get_vehicle_lock_status(vehicle_id))
         return self.vehicle_states[vehicle_id]
 
     def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
@@ -112,6 +113,17 @@ class VehicleManager:
 
             self.restart_vehicle_position(address, vehicle_id)
 
+    def process_lock_command(self, address, vehicle_id):
+        state = self.get_vehicle_state(vehicle_id)
+        if state.locked is True:
+            state.set_vehicle_lock_status(False)
+            data = {'locked': 'false'}
+        else:
+            state.set_vehicle_lock_status(True)
+            data = {'locked': 'true'}
+        firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+        print(print(Strings.VEHICLE_LOCKED.format(vehicle_id)) if state.locked is True else print(Strings.VEHICLE_UNLOCKED.format(vehicle_id)))
+
     def start_vehicle(self, destination_address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
@@ -187,6 +199,7 @@ class VehicleManager:
                     Strings.STOP_COMMAND: self.process_stop_command,
                     Strings.RESTART_COMMAND: self.process_restart_command,
                     Strings.CURRENT_POSITION_COMMAND: self.send_current_location,
+                    Strings.LOCK_COMMAND: self.process_lock_command
                 }
 
                 # Pass both command and vehicle ID to the corresponding handler

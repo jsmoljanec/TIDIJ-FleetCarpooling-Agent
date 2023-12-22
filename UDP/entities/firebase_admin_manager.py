@@ -39,3 +39,13 @@ class FirebaseAdminManager:
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCATION.format(e))
             raise e
+
+    def get_vehicle_lock_status(self, vehicle_id):
+        try:
+            vehicle_data = self.db_reference.child(f'Vehicles/{vehicle_id}').get()
+            return {
+                "locked": vehicle_data.get("locked", 0.0)
+            }
+        except Exception as e:
+            print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS.format(e))
+            raise e
