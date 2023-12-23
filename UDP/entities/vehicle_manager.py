@@ -123,10 +123,10 @@ class VehicleManager:
         state = self.get_vehicle_state(vehicle_id)
         if state.locked is True:
             state.set_vehicle_lock_status(False)
-            data = {'locked': 'false'}
+            data = {'locked': False}
         else:
             state.set_vehicle_lock_status(True)
-            data = {'locked': 'true'}
+            data = {'locked': True}
         firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
         check_string = Strings.VEHICLE_LOCKED.format(vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
