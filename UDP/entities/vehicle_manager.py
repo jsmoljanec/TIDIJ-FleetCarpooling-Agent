@@ -3,6 +3,7 @@ import threading
 import time
 import os
 from dotenv import load_dotenv
+from urllib.parse import quote
 
 from .firebase_admin_manager import FirebaseAdminManager
 from .google_maps import GoogleMapsAPI
@@ -46,6 +47,7 @@ class VehicleManager:
     def change_vehicle_route(self, vehicle_id, destination, address):
         state = self.get_vehicle_state(vehicle_id)
         current_location = firebaseManager.get_vehicle_current_position(vehicle_id)
+        destination = destination.replace('_', ' ')
         coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(),
                                                    f"{current_location['latitude']}, {state.location['longitude']}",
                                                    destination)
