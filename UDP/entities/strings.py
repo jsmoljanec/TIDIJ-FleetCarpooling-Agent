@@ -28,6 +28,7 @@ class Strings:
     VEHICLE_ROUTE_SET = "[1011] Vehicle [{}] has set destination to {}."
     VEHICLE_LOCKED = "[1100] Vehicle [{}] is locked."
     VEHICLE_UNLOCKED = "[1101] Vehicle [{}] is unlocked."
+    VEHICLE_CANT_START_LOCKED = "[1110] Vehicle [{}] cant start because it is locked."
 
     # Error handling messages
     ERROR_UDP_BINDING = "Error binding UDP socket: {}."

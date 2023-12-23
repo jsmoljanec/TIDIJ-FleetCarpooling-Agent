@@ -68,19 +68,23 @@ class VehicleManager:
     def process_start_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if len(state.coordinates) != 0:
-            if state.is_running or state.last_command == Strings.START_COMMAND:
-                print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
-                self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id).encode("utf-8"), address)
+        if state.is_vehicle_locked() is not True:
+            if len(state.coordinates) != 0:
+                if state.is_running or state.last_command == Strings.START_COMMAND:
+                    print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
+                    self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id).encode("utf-8"), address)
+                else:
+                    print(Strings.VEHICLE_STARTED.format(vehicle_id))
+                    self.UDPServerSocket.sendto(Strings.VEHICLE_STARTED.format(vehicle_id).encode("utf-8"), address)
+                    state.last_command = Strings.START_COMMAND
+                    vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
+                    vehicle_thread.start()
             else:
-                print(Strings.VEHICLE_STARTED.format(vehicle_id))
-                self.UDPServerSocket.sendto(Strings.VEHICLE_STARTED.format(vehicle_id).encode("utf-8"), address)
-                state.last_command = Strings.START_COMMAND
-                vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
-                vehicle_thread.start()
+                print(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id))
+                self.UDPServerSocket.sendto(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id).encode("utf-8"), address)
         else:
-            print(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id))
-            self.UDPServerSocket.sendto(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id).encode("utf-8"), address)
+            print(Strings.VEHICLE_CANT_START_LOCKED.format(state.vehicle_id))
+            self.UDPServerSocket.sendto(Strings.VEHICLE_CANT_START_LOCKED.format(state.vehicle_id).encode("utf-8"),address)
 
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
