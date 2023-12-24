@@ -20,7 +20,6 @@ class GoogleMapsAPI:
     def get_directions(self, origin, destination, mode="driving"):
         try:
             now = datetime.now()
-
             directions_result = self.gmaps.directions(origin, destination, mode=mode, departure_time=now)
 
             if not directions_result:
