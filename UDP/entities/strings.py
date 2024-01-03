@@ -41,3 +41,4 @@ class Strings:
     ERROR_FIREBASE_UPDATE_VEHICLE_DATA = "Error updating vehicle data: {}."
     ERROR_FIREBASE_GET_VEHICLE_LOCATION = "Error getting vehicle current position: {}."
     ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS = "Error getting vehicle lock status: {}."
+    ERROR_FIREBASE_GET_VEHICLE_TRAVELED_DISTANCE = "Error getting vehicle traveled distance: {}."
