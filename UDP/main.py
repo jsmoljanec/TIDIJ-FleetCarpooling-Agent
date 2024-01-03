@@ -33,7 +33,9 @@ if __name__ == "__main__":
             pass
     except Exception as e:
         log_exception()
+        manager.store_all_vehicle_distance_data()
         print(f"Izlaz iz programa zbog iznimke: {e}")
     except KeyboardInterrupt:
         log_exception()
+        manager.store_all_vehicle_distance_data()
         print("Izlaz iz programa zbog pritiska tipke za prekid.")

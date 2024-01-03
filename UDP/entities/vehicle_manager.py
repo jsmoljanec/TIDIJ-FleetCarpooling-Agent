@@ -14,14 +14,14 @@ from .vehicle_statistics import VehicleStatistics
 load_dotenv()
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
 firebase_database_url = os.getenv("DATABASE_URL")
-firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
-maps_api = GoogleMapsAPI()
-vehicle_statistics = VehicleStatistics()
 
 
 class VehicleManager:
     def __init__(self, device, port=50001):
         self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
+        self.maps_api = GoogleMapsAPI()
+        self.vehicle_statistics = VehicleStatistics()
 
         try:
             self.UDPServerSocket.bind((device, port))
@@ -36,8 +36,8 @@ class VehicleManager:
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
-            self.vehicle_states[vehicle_id].set_location(firebaseManager.get_vehicle_current_position(vehicle_id))
-            self.vehicle_states[vehicle_id].set_vehicle_lock_status(firebaseManager.get_vehicle_lock_status(vehicle_id))
+            self.vehicle_states[vehicle_id].set_location(self.firebaseManager.get_vehicle_current_position(vehicle_id))
+            self.vehicle_states[vehicle_id].set_vehicle_lock_status(self.firebaseManager.get_vehicle_lock_status(vehicle_id))
         return self.vehicle_states[vehicle_id]
 
     def get_all_vehicle_states(self):
@@ -51,10 +51,9 @@ class VehicleManager:
 
     def change_vehicle_route(self, vehicle_id, destination, address):
         state = self.get_vehicle_state(vehicle_id)
-        current_location = firebaseManager.get_vehicle_current_position(vehicle_id)
+        current_location = self.firebaseManager.get_vehicle_current_position(vehicle_id)
         destination = destination.replace('_', ' ')
-        coordinates = GoogleMapsAPI.get_directions(GoogleMapsAPI(),
-                                                   f"{current_location['latitude']}, {state.location['longitude']}",
+        coordinates = self.maps_api.get_directions(f"{current_location['latitude']}, {state.location['longitude']}",
                                                    destination)
         if len(coordinates) > 0:
             state.set_route(coordinates)
@@ -132,7 +131,7 @@ class VehicleManager:
         else:
             state.set_vehicle_lock_status(True)
             data = {'locked': True}
-        firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+        self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
         check_string = Strings.VEHICLE_LOCKED.format(vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
         self.UDPServerSocket.sendto(check_string.encode("utf-8"), address)
@@ -171,9 +170,9 @@ class VehicleManager:
             print(Strings.VEHICLE_DRIVING_LOCATION.format(vehicle_id, state.location))
             self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), destination_address)
             data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
-            firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+            self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
-            distance_between_two_points = vehicle_statistics.calculate_distance(previous_location, state.location)
+            distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location)
             state.distance_traveled = state.distance_traveled + distance_between_two_points
             print(f"Distance traveled so far: {state.distance_traveled}")
             time.sleep(state.speed)
@@ -197,7 +196,16 @@ class VehicleManager:
         self.UDPServerSocket.sendto(Strings.VEHICLE_RESTARTED.format(vehicle_id).encode("utf-8"), destination_address)
 
         data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
-        firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+        self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
+
+    def store_all_vehicle_distance_data(self):
+        for vehicle, value in self.get_all_vehicle_states().items():
+            distance_traveled = int(value.distance_traveled)
+            print(f"Vehicle: {vehicle}, Distance traveled: {distance_traveled}")
+            distance_traveled_stored = self.firebaseManager.get_vehicle_traveled_distance(vehicle)
+            total_distance = distance_traveled + distance_traveled_stored
+            data = {'distanceTraveled': total_distance}
+            self.firebaseManager.update_vehicle_data(f"{vehicle}", data)
 
     def receive_commands(self):
         while True:
