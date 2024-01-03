@@ -9,8 +9,8 @@ class VehicleStatistics:
     def calculate_distance(self, location1, location2):
         lat1 = radians(location1["latitude"])
         lon1 = radians(location1["longitude"])
-        lat2 = radians(location2[0])
-        lon2 = radians(location2[1])
+        lat2 = radians(location2["latitude"])
+        lon2 = radians(location2["longitude"])
 
         dlat = lat2 - lat1
         dlon = lon2 - lon1

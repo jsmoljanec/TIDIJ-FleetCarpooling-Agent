@@ -11,6 +11,7 @@ class VehicleState:
         self.coordinates = []
         self.location = None
         self.locked = None
+        self.distance_traveled = 0
 
     def set_route(self, coordinates):
         self.coordinates = coordinates

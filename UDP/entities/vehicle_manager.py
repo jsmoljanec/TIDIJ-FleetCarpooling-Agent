@@ -9,12 +9,14 @@ from .firebase_admin_manager import FirebaseAdminManager
 from .google_maps import GoogleMapsAPI
 from .strings import Strings
 from .vehicle_state import VehicleState
+from .vehicle_statistics import VehicleStatistics
 
 load_dotenv()
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
 firebase_database_url = os.getenv("DATABASE_URL")
 firebaseManager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
 maps_api = GoogleMapsAPI()
+vehicle_statistics = VehicleStatistics()
 
 
 class VehicleManager:
@@ -37,6 +39,9 @@ class VehicleManager:
             self.vehicle_states[vehicle_id].set_location(firebaseManager.get_vehicle_current_position(vehicle_id))
             self.vehicle_states[vehicle_id].set_vehicle_lock_status(firebaseManager.get_vehicle_lock_status(vehicle_id))
         return self.vehicle_states[vehicle_id]
+
+    def get_all_vehicle_states(self):
+        return self.vehicle_states
 
     def change_vehicle_state(self, vehicle_id, is_running, stop_requested, restart_requested):
         state = self.get_vehicle_state(vehicle_id)
@@ -158,6 +163,7 @@ class VehicleManager:
                 break
 
             coordinate = state.coordinates[i]
+            previous_location = state.location
             state.location = {
                 "latitude": coordinate[0],
                 "longitude": coordinate[1]
@@ -167,7 +173,9 @@ class VehicleManager:
             data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
             firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
-
+            distance_between_two_points = vehicle_statistics.calculate_distance(previous_location, state.location)
+            state.distance_traveled = state.distance_traveled + distance_between_two_points
+            print(f"Distance traveled so far: {state.distance_traveled}")
             time.sleep(state.speed)
 
     def stop_vehicle(self, destination_address, vehicle_id):
