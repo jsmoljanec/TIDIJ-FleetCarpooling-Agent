@@ -43,3 +43,4 @@ class Strings:
     ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS = "Error getting vehicle lock status: {}."
     ERROR_FIREBASE_GET_VEHICLE_TRAVELED_DISTANCE = "Error getting vehicle traveled distance: {}."
     ERROR_FIREBASE_GET_VEHICLE_FUEL_CONSUMPTION = "Error getting nominal vehicle fuel consumption: {}."
+    ERROR_FIREBASE_GET_CURRENT_RESERVATION = "Error getting current reservation: {}."

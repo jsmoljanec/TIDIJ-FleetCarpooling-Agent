@@ -1,6 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+from datetime import datetime
 
 from .strings import Strings
 
@@ -67,3 +68,34 @@ class FirebaseAdminManager:
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_FUEL_CONSUMPTION.format(e))
             raise e
+
+    def get_current_reservation_for_vin_car(self, vehicle_id):
+        try:
+            reservations = self.db_reference.child('Reservation').get()
+            current_time = datetime.now()
+
+            matching_reservations = []
+
+            for reservation_id, reservation_data in reservations.items():
+                car_vin = reservation_data.get("VinCar", "")
+                start_datetime = datetime.strptime(
+                    reservation_data.get("pickupDate") + " " + reservation_data.get("pickupTime"), "%Y-%m-%d %H:%M")
+                end_datetime = datetime.strptime(
+                    reservation_data.get("returnDate") + " " + reservation_data.get("returnTime"), "%Y-%m-%d %H:%M")
+
+                if car_vin == vehicle_id and start_datetime <= current_time <= end_datetime:
+                    matching_reservations.append({
+                        "reservation_id": reservation_id,
+                        "VinCar": car_vin,
+                        "pickupDate": reservation_data.get("pickupDate", ""),
+                        "pickupTime": reservation_data.get("pickupTime", ""),
+                        "returnDate": reservation_data.get("returnDate", ""),
+                        "returnTime": reservation_data.get("returnTime", ""),
+                    })
+
+            return matching_reservations
+
+        except Exception as e:
+            print(Strings.ERROR_FIREBASE_GET_CURRENT_RESERVATION.format(e))
+            raise e
+

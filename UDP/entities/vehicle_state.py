@@ -14,6 +14,7 @@ class VehicleState:
         self.distance_traveled = 0
         self.nominal_fuel_consumption = 0
         self.combined_fuel_consumption = 0
+        self.firebase_id = None
 
     def set_route(self, coordinates):
         self.coordinates = coordinates
@@ -29,3 +30,6 @@ class VehicleState:
 
     def set_fuel_consumption(self, fuel_consumption):
         self.nominal_fuel_consumption = fuel_consumption
+
+    def set_firebase_id(self, firebase_id):
+        self.firebase_id = firebase_id
