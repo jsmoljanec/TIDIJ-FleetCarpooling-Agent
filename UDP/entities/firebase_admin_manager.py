@@ -58,3 +58,12 @@ class FirebaseAdminManager:
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_TRAVELED_DISTANCE.format(e))
             raise e
+
+    def get_vehicle_nominal_fuel_consumption(self, vehicle_id):
+        try:
+            vehicle_data = self.db_reference.child(f'Vehicles/{vehicle_id}').get()
+            return vehicle_data.get("fuelConsumption", 0.0)
+
+        except Exception as e:
+            print(Strings.ERROR_FIREBASE_GET_VEHICLE_FUEL_CONSUMPTION.format(e))
+            raise e

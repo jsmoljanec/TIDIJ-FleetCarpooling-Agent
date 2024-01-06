@@ -37,7 +37,10 @@ class VehicleManager:
         if vehicle_id not in self.vehicle_states:
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
             self.vehicle_states[vehicle_id].set_location(self.firebaseManager.get_vehicle_current_position(vehicle_id))
-            self.vehicle_states[vehicle_id].set_vehicle_lock_status(self.firebaseManager.get_vehicle_lock_status(vehicle_id))
+            self.vehicle_states[vehicle_id].set_vehicle_lock_status(
+                self.firebaseManager.get_vehicle_lock_status(vehicle_id))
+            self.vehicle_states[vehicle_id].set_fuel_consumption(
+                self.firebaseManager.get_vehicle_nominal_fuel_consumption(vehicle_id))
         return self.vehicle_states[vehicle_id]
 
     def get_all_vehicle_states(self):
@@ -58,15 +61,18 @@ class VehicleManager:
         if len(coordinates) > 0:
             state.set_route(coordinates)
             print(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination))
-            self.UDPServerSocket.sendto(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination).encode("utf-8"), address)
+            self.UDPServerSocket.sendto(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination).encode("utf-8"),
+                                        address)
 
         else:
             print(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id))
-            self.UDPServerSocket.sendto(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id).encode("utf-8"), address)
+            self.UDPServerSocket.sendto(Strings.ERROR_LOCATION_FIND.format(destination, vehicle_id).encode("utf-8"),
+                                        address)
 
     def send_current_location(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), address)
+        self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"),
+                                    address)
         print(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location))
 
     def process_start_command(self, address, vehicle_id):
@@ -76,7 +82,8 @@ class VehicleManager:
             if len(state.coordinates) != 0:
                 if state.is_running or state.last_command == Strings.START_COMMAND:
                     print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
-                    self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id).encode("utf-8"), address)
+                    self.UDPServerSocket.sendto(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id).encode("utf-8"),
+                                                address)
                 else:
                     print(Strings.VEHICLE_STARTED.format(vehicle_id))
                     self.UDPServerSocket.sendto(Strings.VEHICLE_STARTED.format(vehicle_id).encode("utf-8"), address)
@@ -85,10 +92,12 @@ class VehicleManager:
                     vehicle_thread.start()
             else:
                 print(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id))
-                self.UDPServerSocket.sendto(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id).encode("utf-8"), address)
+                self.UDPServerSocket.sendto(Strings.VEHICLE_NO_DESTINATION.format(state.vehicle_id).encode("utf-8"),
+                                            address)
         else:
             print(Strings.VEHICLE_CANT_START_LOCKED.format(state.vehicle_id))
-            self.UDPServerSocket.sendto(Strings.VEHICLE_CANT_START_LOCKED.format(state.vehicle_id).encode("utf-8"),address)
+            self.UDPServerSocket.sendto(Strings.VEHICLE_CANT_START_LOCKED.format(state.vehicle_id).encode("utf-8"),
+                                        address)
 
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
@@ -132,7 +141,8 @@ class VehicleManager:
             state.set_vehicle_lock_status(True)
             data = {'locked': True}
         self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
-        check_string = Strings.VEHICLE_LOCKED.format(vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
+        check_string = Strings.VEHICLE_LOCKED.format(
+            vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
         self.UDPServerSocket.sendto(check_string.encode("utf-8"), address)
 
@@ -145,7 +155,8 @@ class VehicleManager:
         if state.last_stopped_location:
             state.location = state.last_stopped_location
             print(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location))
-            self.UDPServerSocket.sendto(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location).encode("utf-8"), destination_address)
+            self.UDPServerSocket.sendto(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location).encode("utf-8"),
+                                        destination_address)
 
         if state.last_index > 0:
             state.last_index -= 1
@@ -168,13 +179,17 @@ class VehicleManager:
                 "longitude": coordinate[1]
             }
             print(Strings.VEHICLE_DRIVING_LOCATION.format(vehicle_id, state.location))
-            self.UDPServerSocket.sendto(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"), destination_address)
+            self.UDPServerSocket.sendto(
+                Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location).encode("utf-8"),
+                destination_address)
             data = {'latitude': state.location["latitude"], 'longitude': state.location["longitude"]}
             self.firebaseManager.update_vehicle_data(f"{vehicle_id}", data)
             sequence_number += 1
             distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location)
+            fuel_consumption = self.vehicle_statistics.calculate_random_fuel_consumption(distance_between_two_points, state.nominal_fuel_consumption)
             state.distance_traveled = state.distance_traveled + distance_between_two_points
-            print(f"Distance traveled so far: {state.distance_traveled}")
+            state.combined_fuel_consumption = state.combined_fuel_consumption + fuel_consumption
+            print(f"Distance traveled so far: {round(state.distance_traveled, 2)} km. Fuel consumed: {round(state.combined_fuel_consumption, 2)} L")
             time.sleep(state.speed)
 
     def stop_vehicle(self, destination_address, vehicle_id):

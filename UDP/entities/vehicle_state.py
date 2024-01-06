@@ -12,6 +12,8 @@ class VehicleState:
         self.location = None
         self.locked = None
         self.distance_traveled = 0
+        self.nominal_fuel_consumption = 0
+        self.combined_fuel_consumption = 0
 
     def set_route(self, coordinates):
         self.coordinates = coordinates
@@ -24,3 +26,6 @@ class VehicleState:
 
     def is_vehicle_locked(self):
         return self.locked is True
+
+    def set_fuel_consumption(self, fuel_consumption):
+        self.nominal_fuel_consumption = fuel_consumption
