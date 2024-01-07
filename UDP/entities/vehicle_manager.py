@@ -1,19 +1,9 @@
 import threading
 import time
-import os
-from dotenv import load_dotenv
 from datetime import datetime
 
-from .firebase_admin_manager import FirebaseAdminManager
-from .google_maps import GoogleMapsAPI
 from .strings import Strings
 from .vehicle_state import VehicleState
-from .vehicle_statistics import VehicleStatistics
-from .udp_server import UDPServer
-
-load_dotenv()
-firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
-firebase_database_url = os.getenv("DATABASE_URL")
 
 
 def extract_vehicle_id(vehicle_id):
@@ -24,22 +14,21 @@ def extract_vehicle_id(vehicle_id):
         first = parts[0]
         return first
     else:
-        print("Format stringa nije ispravan.")
+        print(Strings.ERROR_STRING_FORMAT)
 
 
 class VehicleManager:
-    def __init__(self, device, port):
-        self.udp_server = UDPServer(device, port)
-        self.firebase_manager = FirebaseAdminManager(firebase_credentials_path, firebase_database_url)
-        self.maps_api = GoogleMapsAPI()
-        self.vehicle_statistics = VehicleStatistics()
+    def __init__(self, udp_server, firebase_manager, maps_api, vehicle_statistics):
+        self.udp_server = udp_server
+        self.firebase_manager = firebase_manager
+        self.maps_api = maps_api
+        self.vehicle_statistics = vehicle_statistics
 
         self.vehicle_states = {}
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
             extracted_vehicle_id = extract_vehicle_id(vehicle_id)
-            print(extracted_vehicle_id)
             vehicle = self.firebase_manager.get_all_vehicle_data(extracted_vehicle_id)
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
 

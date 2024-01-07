@@ -32,6 +32,7 @@ class Strings:
     VEHICLE_CANT_BE_RESTARTED = "[1111] Vehicle [{}] cant be restarted because it is locked."
 
     # Error handling messages
+    ERROR_STRING_FORMAT = "String format is not right."
     ERROR_UDP_BINDING = "Error binding UDP socket: {}."
     ERROR_LOCATION_FIND = "Cant find destination: {} as requested by: {}."
     ERROR_GOOGLE_MAPS_API_KEY = "Valid Google Maps API key is not provided. Please set the GOOGLE_MAPS_API_KEY environment variable with valid API key."
@@ -47,4 +48,7 @@ class Strings:
     ERROR_FIREBASE_GET_VEHICLE_FUEL_CONSUMPTION = "Error getting nominal vehicle fuel consumption: {}."
     ERROR_FIREBASE_GET_CURRENT_RESERVATION = "Error getting current reservation: {}."
     ERROR_FIREBASE_GET_RESERVATION_FUEL_CONSUMPTION = "Error getting fuel consumption for reservation: {}."
+
+    # The rest
+    EXITING_PROGRAM = "Exiting program because of {}exception: {}."
 
