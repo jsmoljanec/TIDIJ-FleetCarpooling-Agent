@@ -1,4 +1,3 @@
-import socket
 import threading
 import time
 import os
@@ -10,34 +9,11 @@ from .google_maps import GoogleMapsAPI
 from .strings import Strings
 from .vehicle_state import VehicleState
 from .vehicle_statistics import VehicleStatistics
+from .udp_server import UDPServer
 
 load_dotenv()
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
 firebase_database_url = os.getenv("DATABASE_URL")
-
-
-class UDPServer:
-    def __init__(self, device, port=50001):
-        self.UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        try:
-            self.UDPServerSocket.bind((device, port))
-            print(Strings.AGENT_UP.format(device, port))
-            print(Strings.MESSAGE_SEPARATOR)
-        except socket.error as e:
-            print(Strings.ERROR_UDP_BINDING.format(e))
-            raise e
-
-    def receive_commands(self, vehicle_manager):
-        while True:
-            bytes_address_pair = self.UDPServerSocket.recvfrom(1024)
-            message = bytes_address_pair[0].decode("utf-8")
-            address = bytes_address_pair[1]
-
-            vehicle_manager.process_udp_message(message, address)
-
-    def send_udp_message(self, message, address):
-        self.UDPServerSocket.sendto(message.encode("utf-8"), address)
 
 
 class VehicleManager:
