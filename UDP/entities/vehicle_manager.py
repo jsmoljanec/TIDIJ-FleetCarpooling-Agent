@@ -16,6 +16,17 @@ firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
 firebase_database_url = os.getenv("DATABASE_URL")
 
 
+def extract_vehicle_id(vehicle_id):
+    input_string = vehicle_id
+    parts = input_string.split('-')
+
+    if len(parts) >= 3:
+        first = parts[0]
+        return first
+    else:
+        print("Format stringa nije ispravan.")
+
+
 class VehicleManager:
     def __init__(self, device, port):
         self.udp_server = UDPServer(device, port)
@@ -27,7 +38,7 @@ class VehicleManager:
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
-            extracted_vehicle_id = self.extract_vehicle_id(vehicle_id)
+            extracted_vehicle_id = extract_vehicle_id(vehicle_id)
             print(extracted_vehicle_id)
             vehicle = self.firebase_manager.get_all_vehicle_data(extracted_vehicle_id)
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
@@ -198,22 +209,17 @@ class VehicleManager:
 
     def store_all_vehicle_distance_data(self):
         for vehicle, value in self.get_all_vehicle_states().items():
-            distance_traveled = int(value.distance_traveled)
-            print(f"Vehicle: {vehicle}, Distance traveled: {distance_traveled}")
-            distance_traveled_stored = self.firebase_manager.get_vehicle_traveled_distance(value.firebase_id)
-            total_distance = distance_traveled + distance_traveled_stored
+            distance_traveled_local = int(value.distance_traveled)
+            fuel_consumption_local = value.combined_fuel_consumption
+            print(f"Vehicle: {vehicle}, Distance traveled: {distance_traveled_local}")
+            distance_traveled_firebase = self.firebase_manager.get_vehicle_traveled_distance(value.firebase_id)
+            fuel_consumption_firebase = self.firebase_manager.get_reservation_fuel_consumption(value.reservation_id)
+            total_distance = distance_traveled_firebase + distance_traveled_local
+            total_fuel_consumption = round(fuel_consumption_firebase + fuel_consumption_local, 2)
             data = {'distanceTraveled': total_distance}
             self.firebase_manager.update_vehicle_data(f"{value.firebase_id}", data)
-
-    def extract_vehicle_id(self, vehicle_id):
-        input_string = vehicle_id
-        parts = input_string.split('-')
-
-        if len(parts) >= 3:
-            first = parts[0]
-            return first
-        else:
-            print("Format stringa nije ispravan.")
+            data = {'fuelConsumption': total_fuel_consumption}
+            self.firebase_manager.update_reservation_data(f"{value.reservation_id}", data)
 
     def refine_vehicle_id(self, vehicle_id):
         reservation = self.firebase_manager.get_current_reservation_for_vin_car(vehicle_id)

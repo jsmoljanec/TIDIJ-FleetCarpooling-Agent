@@ -40,8 +40,11 @@ class Strings:
     ERROR_FIREBASE = "Error initializing Firebase app: {}."
     ERROR_FIREBASE_GET_VEHICLE_DATA = "Error getting all vehicle data: {}."
     ERROR_FIREBASE_UPDATE_VEHICLE_DATA = "Error updating vehicle data: {}."
+    ERROR_FIREBASE_UPDATE_RESERVATION_DATA = "Error updating reservation data: {}."
     ERROR_FIREBASE_GET_VEHICLE_LOCATION = "Error getting vehicle current position: {}."
     ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS = "Error getting vehicle lock status: {}."
     ERROR_FIREBASE_GET_VEHICLE_TRAVELED_DISTANCE = "Error getting vehicle traveled distance: {}."
     ERROR_FIREBASE_GET_VEHICLE_FUEL_CONSUMPTION = "Error getting nominal vehicle fuel consumption: {}."
     ERROR_FIREBASE_GET_CURRENT_RESERVATION = "Error getting current reservation: {}."
+    ERROR_FIREBASE_GET_RESERVATION_FUEL_CONSUMPTION = "Error getting fuel consumption for reservation: {}."
+
