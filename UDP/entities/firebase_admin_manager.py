@@ -16,9 +16,9 @@ class FirebaseAdminManager:
             print(Strings.ERROR_FIREBASE.format(e))
             raise e
 
-    def get_all_vehicle_data(self):
+    def get_all_vehicle_data(self, vehicle_id):
         try:
-            return self.db_reference.child('Vehicles').get()
+            return self.db_reference.child(f'Vehicles/{vehicle_id}').get()
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_DATA.format(e))
             raise e

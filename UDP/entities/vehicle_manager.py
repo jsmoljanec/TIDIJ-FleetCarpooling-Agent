@@ -35,14 +35,13 @@ class VehicleManager:
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
+            vehicle = self.firebaseManager.get_all_vehicle_data(self.extract_vehicle_id(vehicle_id))
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
+            self.vehicle_states[vehicle_id].set_reservation_id(self.firebaseManager.get_current_reservation_for_vin_car(self.extract_vehicle_id(vehicle_id))[0]['reservation_id'])
             self.vehicle_states[vehicle_id].set_firebase_id(self.extract_vehicle_id(vehicle_id))
-            firebase_id = self.vehicle_states[vehicle_id].firebase_id
-            self.vehicle_states[vehicle_id].set_location(self.firebaseManager.get_vehicle_current_position(firebase_id))
-            self.vehicle_states[vehicle_id].set_vehicle_lock_status(
-                self.firebaseManager.get_vehicle_lock_status(firebase_id))
-            self.vehicle_states[vehicle_id].set_fuel_consumption(
-                self.firebaseManager.get_vehicle_nominal_fuel_consumption(firebase_id))
+            self.vehicle_states[vehicle_id].set_location({"latitude": vehicle["latitude"], "longitude": vehicle["longitude"]})
+            self.vehicle_states[vehicle_id].set_vehicle_lock_status(vehicle['locked'])
+            self.vehicle_states[vehicle_id].set_fuel_consumption(vehicle['fuelConsumption'])
         return self.vehicle_states[vehicle_id]
 
     def get_all_vehicle_states(self):
@@ -296,16 +295,8 @@ class VehicleManager:
                 command, vehicle_id = parts
                 command = command.lower()
 
-                if not self.get_all_vehicle_states():
-                    refined_vehicle_id = self.refine_vehicle_id(vehicle_id)
-                    print(refined_vehicle_id)
-                    vehicle_id = refined_vehicle_id
-                else:
-                    check_for_vehicle = self.check_if_vehicle_with_reservation_exists(vehicle_id)
-                    if check_for_vehicle is not None:
-                        vehicle_id = check_for_vehicle
-                    else:
-                        vehicle_id = self.refine_vehicle_id(vehicle_id)
+                # Potrebno optimizirati
+                vehicle_id = self.refine_vehicle_id(vehicle_id)
 
                 command_switch = {
                     Strings.START_COMMAND: self.process_start_command,
