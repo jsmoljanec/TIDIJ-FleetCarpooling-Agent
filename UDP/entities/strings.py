@@ -29,6 +29,7 @@ class Strings:
     VEHICLE_LOCKED = "[1100] Vehicle [{}] is locked."
     VEHICLE_UNLOCKED = "[1101] Vehicle [{}] is unlocked."
     VEHICLE_CANT_START_LOCKED = "[1110] Vehicle [{}] cant start because it is locked."
+    VEHICLE_CANT_BE_RESTARTED = "[1111] Vehicle [{}] cant be restarted because it is locked."
 
     # Error handling messages
     ERROR_UDP_BINDING = "Error binding UDP socket: {}."

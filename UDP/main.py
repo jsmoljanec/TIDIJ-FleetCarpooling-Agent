@@ -22,8 +22,8 @@ def log_exception():
 
 if __name__ == "__main__":
     host = '127.0.0.1' if len(sys.argv) == 1 else sys.argv[1]
-
-    manager = VehicleManager(host)
+    port = 50001
+    manager = VehicleManager(host, port)
 
     command_thread = threading.Thread(target=manager.receive_commands)
     command_thread.start()
