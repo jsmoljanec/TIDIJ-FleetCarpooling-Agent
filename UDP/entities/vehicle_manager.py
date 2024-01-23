@@ -30,14 +30,15 @@ class VehicleManager:
         if vehicle_id not in self.vehicle_states:
             extracted_vehicle_id = extract_vehicle_id(vehicle_id)
             vehicle = self.firebase_manager.get_all_vehicle_data(extracted_vehicle_id)
+            vehicle_location = self.firebase_manager.get_all_vehicle_location_data(extracted_vehicle_id)
             self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
 
             self.vehicle_states[vehicle_id].set_reservation_id(
                 self.firebase_manager.get_current_reservation_for_vin_car(extracted_vehicle_id)[0]['reservation_id'])
             self.vehicle_states[vehicle_id].set_firebase_id(extracted_vehicle_id)
             self.vehicle_states[vehicle_id].set_location(
-                {"latitude": vehicle["latitude"], "longitude": vehicle["longitude"]})
-            self.vehicle_states[vehicle_id].set_vehicle_lock_status(vehicle['locked'])
+                {"latitude": vehicle_location["latitude"], "longitude": vehicle_location["longitude"]})
+            self.vehicle_states[vehicle_id].set_vehicle_lock_status(vehicle_location['locked'])
             self.vehicle_states[vehicle_id].set_fuel_consumption(vehicle['fuelConsumption'])
         return self.vehicle_states[vehicle_id]
 
@@ -130,7 +131,7 @@ class VehicleManager:
         else:
             state.set_vehicle_lock_status(True)
             data = {'locked': True}
-        self.firebase_manager.update_vehicle_data(f"{state.firebase_id}", data)
+        self.firebase_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
         check_string = Strings.VEHICLE_LOCKED.format(
             vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
@@ -167,7 +168,7 @@ class VehicleManager:
             self.udp_server.send_udp_message(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location),
                                              address)
             data = state.get_location()
-            self.firebase_manager.update_vehicle_data(f"{state.firebase_id}", data)
+            self.firebase_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
             sequence_number += 1
             distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location)
             fuel_consumption = self.vehicle_statistics.calculate_random_fuel_consumption(distance_between_two_points,
@@ -194,7 +195,7 @@ class VehicleManager:
         self.udp_server.send_udp_message(Strings.VEHICLE_RESTARTED.format(vehicle_id), address)
 
         data = state.get_location()
-        self.firebase_manager.update_vehicle_data(f"{state.firebase_id}", data)
+        self.firebase_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
 
     def store_all_vehicle_distance_data(self):
         for vehicle, value in self.get_all_vehicle_states().items():

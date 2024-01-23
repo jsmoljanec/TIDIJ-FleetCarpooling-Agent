@@ -16,6 +16,13 @@ class FirebaseAdminManager:
             print(Strings.ERROR_FIREBASE.format(e))
             raise e
 
+    def get_all_vehicle_location_data(self, vehicle_id):
+        try:
+            return self.db_reference.child(f'VehicleLocations/{vehicle_id}').get()
+        except Exception as e:
+            print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCATION_DATA.format(e))
+            raise e
+
     def get_all_vehicle_data(self, vehicle_id):
         try:
             return self.db_reference.child(f'Vehicles/{vehicle_id}').get()
@@ -30,6 +37,13 @@ class FirebaseAdminManager:
             print(Strings.ERROR_FIREBASE_UPDATE_VEHICLE_DATA.format(e))
             raise e
 
+    def update_vehicle_location_data(self, vehicle_id, data):
+        try:
+            self.db_reference.child(f'VehicleLocations/{vehicle_id}').update(data)
+        except Exception as e:
+            print(Strings.ERROR_FIREBASE_UPDATE_VEHICLE_LOCATION_DATA.format(e))
+            raise e
+
     def update_reservation_data(self, reservation_id, data):
         try:
             self.db_reference.child(f'Reservation/{reservation_id}').update(data)
@@ -39,7 +53,7 @@ class FirebaseAdminManager:
 
     def get_vehicle_current_position(self, vehicle_id):
         try:
-            vehicle_data = self.db_reference.child(f'Vehicles/{vehicle_id}').get()
+            vehicle_data = self.db_reference.child(f'VehicleLocations/{vehicle_id}').get()
             return {
                 "latitude": vehicle_data.get("latitude", 0.0),
                 "longitude": vehicle_data.get("longitude", 0.0)
@@ -50,7 +64,7 @@ class FirebaseAdminManager:
 
     def get_vehicle_lock_status(self, vehicle_id):
         try:
-            vehicle_data = self.db_reference.child(f'Vehicles/{vehicle_id}').get()
+            vehicle_data = self.db_reference.child(f'VehicleLocations/{vehicle_id}').get()
             return {
                 "locked": vehicle_data.get("locked", 0.0)
             }
