@@ -1,4 +1,4 @@
-from .strings import Strings
+from UDP.entities.utilities.strings import Strings
 
 
 class VehicleState:

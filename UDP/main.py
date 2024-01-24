@@ -1,17 +1,17 @@
 import sys
 import threading
-from entities.vehicle_manager import VehicleManager
+from UDP.entities.vehicle.vehicle_manager import VehicleManager
 import traceback
 import os
 
 from dotenv import load_dotenv
 from datetime import datetime
 
-from entities.firebase_admin_manager import FirebaseAdminManager
-from entities.google_maps import GoogleMapsAPI
-from entities.vehicle_statistics import VehicleStatistics
+from UDP.entities.google.firebase.firebase_admin_manager import FirebaseAdminManager
+from UDP.entities.google.google_maps import GoogleMapsAPI
+from UDP.entities.vehicle.vehicle_statistics import VehicleStatistics
 from entities.udp_server import UDPServer
-from entities.strings import Strings
+from UDP.entities.utilities.strings import Strings
 
 load_dotenv("entities/.env")
 firebase_credentials_path = os.getenv("CREDENTIALS_PATH")
