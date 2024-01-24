@@ -29,7 +29,7 @@ class VehicleManager:
         self.vehicle_states[vehicle_id].set_firebase_id(extracted_vehicle_id)
         self.vehicle_states[vehicle_id].set_location(
             {"latitude": vehicle_location["latitude"], "longitude": vehicle_location["longitude"]})
-        self.vehicle_states[vehicle_id].set_vehicle_lock_status(vehicle_location['locked'])
+        self.vehicle_states[vehicle_id].update_vehicle_lock_status(vehicle_location['locked'])
         self.vehicle_states[vehicle_id].set_fuel_consumption(vehicle['fuelConsumption'])
 
     def get_vehicle_state(self, vehicle_id):
@@ -123,7 +123,7 @@ class VehicleManager:
         state = self.get_vehicle_state(vehicle_id)
 
         is_locked = state.is_vehicle_locked()
-        state.set_vehicle_lock_status(not is_locked)
+        state.update_vehicle_lock_status(not is_locked)
         data = {'locked': not is_locked}
 
         self.lock_vehicle(state, vehicle_id, address, data)

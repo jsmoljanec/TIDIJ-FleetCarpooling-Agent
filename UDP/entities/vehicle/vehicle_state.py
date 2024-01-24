@@ -20,19 +20,19 @@ class VehicleState:
         self.firebase_id = None
         self.reservation_id = None
 
+    def get_location(self):
+        return self.location
+
+    def get_vehicle_speed(self):
+        return self.speed
+
     def set_route(self, coordinates):
         self.coordinates = coordinates
 
     def set_location(self, location):
         self.location = location
 
-    def get_location(self):
-        return self.location
-
-    def is_vehicle_locked(self):
-        return self.locked is True
-
-    def set_vehicle_lock_status(self, lock):
+    def update_vehicle_lock_status(self, lock):
         self.locked = lock
 
     def set_fuel_consumption(self, fuel_consumption):
@@ -56,12 +56,8 @@ class VehicleState:
     def is_vehicle_running(self):
         return self.is_running or self.last_command == Strings.START_COMMAND
 
-    def check_index(self):
-        if self.last_index > 0:
-            self.last_index -= 1
-
-    def get_vehicle_speed(self):
-        return self.speed
+    def is_vehicle_locked(self):
+        return self.locked is True
 
     def remember_vehicle_last_command(self, command):
         self.last_command = command
@@ -70,3 +66,7 @@ class VehicleState:
         self.is_running = is_running
         self.stop_requested = stop_requested
         self.restart_requested = restart_requested
+
+    def check_index(self):
+        if self.last_index > 0:
+            self.last_index -= 1

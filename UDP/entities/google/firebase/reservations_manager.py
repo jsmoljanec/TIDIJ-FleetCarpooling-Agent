@@ -1,3 +1,4 @@
+from UDP.entities.utilities.date_time_utils import DateTimeUtils
 from UDP.entities.utilities.strings import Strings
 from datetime import datetime
 
@@ -20,25 +21,27 @@ class ReservationsManager:
     def get_current_reservation_for_vin_car(self, vehicle_id):
         try:
             reservations = self.db_reference.get()
-            current_time = datetime.now()
+            date_time_format = "%Y-%m-%d %H:%M"
 
             matching_reservations = []
 
             for reservation_id, reservation_data in reservations.items():
                 car_vin = reservation_data.get("VinCar", "")
-                start_datetime = datetime.strptime(
-                    reservation_data.get("pickupDate") + " " + reservation_data.get("pickupTime"), "%Y-%m-%d %H:%M")
-                end_datetime = datetime.strptime(
-                    reservation_data.get("returnDate") + " " + reservation_data.get("returnTime"), "%Y-%m-%d %H:%M")
+                pickup_date = reservation_data.get("pickupDate")
+                pickup_time = reservation_data.get("pickupTime")
+                return_date = reservation_data.get("returnDate")
+                return_time = reservation_data.get("returnTime")
+                start_datetime = datetime.strptime(pickup_date + " " + pickup_time, date_time_format)
+                end_datetime = datetime.strptime(return_date + " " + return_time, date_time_format)
 
-                if car_vin == vehicle_id and start_datetime <= current_time <= end_datetime:
+                if car_vin == vehicle_id and DateTimeUtils.is_current_time_between_dates__string(start_datetime, end_datetime):
                     matching_reservations.append({
                         "reservation_id": reservation_id,
                         "VinCar": car_vin,
-                        "pickupDate": reservation_data.get("pickupDate", ""),
-                        "pickupTime": reservation_data.get("pickupTime", ""),
-                        "returnDate": reservation_data.get("returnDate", ""),
-                        "returnTime": reservation_data.get("returnTime", ""),
+                        "pickupDate": pickup_date,
+                        "pickupTime": pickup_time,
+                        "returnDate": return_date,
+                        "returnTime": return_time,
                     })
 
             return matching_reservations
