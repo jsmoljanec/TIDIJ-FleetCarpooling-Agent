@@ -3,7 +3,7 @@ from firebase_admin import credentials
 from firebase_admin import db
 from datetime import datetime
 
-from .strings import Strings
+from UDP.entities.utilities.strings import Strings
 
 
 class FirebaseAdminManager:
