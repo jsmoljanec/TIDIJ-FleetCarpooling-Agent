@@ -23,14 +23,14 @@ class VehicleManager:
         vehicle_location = self.firebase_manager.vehicle_locations_manager.get_all_vehicle_location_data(
             extracted_vehicle_id)
         self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
-        self.vehicle_states[vehicle_id].set_reservation_id(
+        self.vehicle_states[vehicle_id].firebase_identification.set_reservation_id(
             self.firebase_manager.reservations_manager.get_current_reservation_for_vin_car(extracted_vehicle_id)[0][
                 'reservation_id'])
-        self.vehicle_states[vehicle_id].set_firebase_id(extracted_vehicle_id)
-        self.vehicle_states[vehicle_id].set_location(
+        self.vehicle_states[vehicle_id].firebase_identification.set_firebase_id(extracted_vehicle_id)
+        self.vehicle_states[vehicle_id].location_details.set_location(
             {"latitude": vehicle_location["latitude"], "longitude": vehicle_location["longitude"]})
-        self.vehicle_states[vehicle_id].update_vehicle_lock_status(vehicle_location['locked'])
-        self.vehicle_states[vehicle_id].set_fuel_consumption(vehicle['fuelConsumption'])
+        self.vehicle_states[vehicle_id].status_and_controls.update_vehicle_lock_status(vehicle_location['locked'])
+        self.vehicle_states[vehicle_id].vehicle_data.set_fuel_consumption(vehicle['fuelConsumption'])
 
     def get_vehicle_state(self, vehicle_id):
         if vehicle_id not in self.vehicle_states:
@@ -43,12 +43,12 @@ class VehicleManager:
     def change_vehicle_route(self, vehicle_id, destination, address):
         state = self.get_vehicle_state(vehicle_id)
         current_location = self.firebase_manager.vehicle_locations_manager.get_vehicle_current_position(
-            state.firebase_id)
+            state.firebase_identification.firebase_id)
         destination = destination.replace('_', ' ')
-        coordinates = self.maps_api.get_directions(f"{current_location['latitude']}, {state.location['longitude']}",
+        coordinates = self.maps_api.get_directions(f"{current_location['latitude']}, {state.location_details.location['longitude']}",
                                                    destination)
         if len(coordinates) > 0:
-            state.set_route(coordinates)
+            state.location_details.set_route(coordinates)
             print(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination))
             self.udp_server.send_udp_message(Strings.VEHICLE_ROUTE_SET.format(vehicle_id, destination), address)
 
@@ -58,21 +58,21 @@ class VehicleManager:
 
     def send_current_location(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        self.udp_server.send_udp_message(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location), address)
-        print(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location))
+        self.udp_server.send_udp_message(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location_details.location), address)
+        print(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location_details.location))
 
     def process_start_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if state.is_vehicle_locked() is not True:
-            if state.is_destination_set():
-                if state.is_vehicle_running():
+        if state.status_and_controls.is_vehicle_locked() is not True:
+            if state.location_details.is_destination_set():
+                if state.status_and_controls.is_vehicle_running():
                     print(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id))
                     self.udp_server.send_udp_message(Strings.VEHICLE_ALREADY_RUNNING.format(vehicle_id), address)
                 else:
                     print(Strings.VEHICLE_STARTED.format(vehicle_id))
                     self.udp_server.send_udp_message(Strings.VEHICLE_STARTED.format(vehicle_id), address)
-                    state.remember_vehicle_last_command(Strings.START_COMMAND)
+                    state.status_and_controls.remember_vehicle_last_command(Strings.START_COMMAND)
                     vehicle_thread = threading.Thread(target=self.start_vehicle, args=(address, vehicle_id))
                     vehicle_thread.start()
             else:
@@ -85,34 +85,34 @@ class VehicleManager:
     def process_stop_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if state.is_vehicle_stopped():
+        if state.status_and_controls.is_vehicle_stopped():
             print(Strings.VEHICLE_NOT_RUNNING.format(vehicle_id))
             self.udp_server.send_udp_message(Strings.VEHICLE_NOT_RUNNING.format(vehicle_id), address)
         else:
             print(Strings.VEHICLE_STOPPED.format(vehicle_id))
-            state.remember_vehicle_last_command(Strings.STOP_COMMAND)
+            state.status_and_controls.remember_vehicle_last_command(Strings.STOP_COMMAND)
             self.stop_vehicle(address, vehicle_id)
             self.udp_server.send_udp_message(Strings.VEHICLE_STOPPED.format(vehicle_id), address)
 
     def process_restart_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        if not state.is_destination_set():
+        if not state.location_details.is_destination_set():
             print(Strings.VEHICLE_CANNOT_RESTART.format(vehicle_id))
             self.udp_server.send_udp_message(Strings.VEHICLE_CANNOT_RESTART.format(vehicle_id), address)
             return
 
-        if not state.is_vehicle_locked():
-            if state.is_vehicle_restarted():
+        if not state.status_and_controls.is_vehicle_locked():
+            if state.status_and_controls.is_vehicle_restarted():
                 print(Strings.VEHICLE_ALREADY_RESTARTED.format(vehicle_id))
                 self.udp_server.send_udp_message(Strings.VEHICLE_ALREADY_RESTARTED.format(vehicle_id), address)
             else:
-                state.remember_vehicle_last_command(Strings.RESTART_COMMAND)
-                if state.stop_requested:
+                state.status_and_controls.remember_vehicle_last_command(Strings.RESTART_COMMAND)
+                if state.status_and_controls.stop_requested:
                     print(Strings.VEHICLE_RESTARTED.format(vehicle_id))
                     self.udp_server.send_udp_message(Strings.VEHICLE_RESTARTED.format(vehicle_id), address)
-                    state.last_stopped_location = None
-                    state.last_index = 0
+                    state.location_details.last_stopped_location = None
+                    state.location_details.last_index = 0
 
                 self.restart_vehicle_position(address, vehicle_id)
         else:
@@ -122,95 +122,95 @@ class VehicleManager:
     def process_lock_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
 
-        is_locked = state.is_vehicle_locked()
-        state.update_vehicle_lock_status(not is_locked)
+        is_locked = state.status_and_controls.is_vehicle_locked()
+        state.status_and_controls.update_vehicle_lock_status(not is_locked)
         data = {'locked': not is_locked}
 
         self.lock_vehicle(state, vehicle_id, address, data)
 
     def lock_vehicle(self, state, vehicle_id, address, data):
-        self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
+        self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_identification.firebase_id}", data)
 
         check_string = Strings.VEHICLE_LOCKED.format(
-            vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
+            vehicle_id) if state.status_and_controls.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
 
         self.udp_server.send_udp_message(check_string, address)
 
     def driving_vehicle(self, state, vehicle_id, address):
-        state.check_index()
-        for i in range(state.last_index, len(state.coordinates)):
-            if state.restart_requested:
-                state.last_stopped_location = None
-                state.last_index = 0
+        state.location_details.check_index()
+        for i in range(state.location_details.last_index, len(state.location_details.coordinates)):
+            if state.status_and_controls.restart_requested:
+                state.location_details.last_stopped_location = None
+                state.location_details.last_index = 0
                 break
 
-            if state.stop_requested:
-                state.last_stopped_location = state.location
-                state.last_index = i
+            if state.status_and_controls.stop_requested:
+                state.location_details.last_stopped_location = state.location_details.location
+                state.location_details.last_index = i
                 break
 
-            previous_location = state.get_location()
-            coordinate = state.coordinates[i]
-            state.set_location({"latitude": coordinate[0], "longitude": coordinate[1]})
+            previous_location = state.location_details.get_location()
+            coordinate = state.location_details.coordinates[i]
+            state.location_details.set_location({"latitude": coordinate[0], "longitude": coordinate[1]})
 
-            print(Strings.VEHICLE_DRIVING_LOCATION.format(vehicle_id, state.location))
-            self.udp_server.send_udp_message(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location),
+            print(Strings.VEHICLE_DRIVING_LOCATION.format(vehicle_id, state.location_details.location))
+            self.udp_server.send_udp_message(Strings.VEHICLE_CURRENT_LOCATION.format(vehicle_id, state.location_details.location),
                                              address)
-            data = state.get_location()
-            self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
-            distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location)
+            data = state.location_details.get_location()
+            self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_identification.firebase_id}", data)
+            distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location_details.location)
             fuel_consumption = self.vehicle_statistics.calculate_random_fuel_consumption(distance_between_two_points,
-                                                                                         state.nominal_fuel_consumption)
-            state.distance_traveled = round(state.distance_traveled + distance_between_two_points, 2)
-            state.combined_fuel_consumption = round(state.combined_fuel_consumption + fuel_consumption, 2)
-            print(f"Distance traveled so far: {state.distance_traveled, 2} km. Fuel consumed: {state.combined_fuel_consumption} L")
-            time.sleep(state.get_vehicle_speed())
+                                                                                         state.vehicle_data.nominal_fuel_consumption)
+            state.distance_traveled = round(state.vehicle_data.distance_traveled + distance_between_two_points, 2)
+            state.vehicle_data.combined_fuel_consumption = round(state.vehicle_data.combined_fuel_consumption + fuel_consumption, 2)
+            print(f"Distance traveled so far: {state.vehicle_data.distance_traveled} km. Fuel consumed: {state.vehicle_data.combined_fuel_consumption} L")
+            time.sleep(state.vehicle_data.get_vehicle_speed())
 
     def start_vehicle(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        state.change_vehicle_state(True, False, False)
+        state.status_and_controls.change_vehicle_state(True, False, False)
 
-        if state.last_stopped_location:
-            state.set_location(state.last_stopped_location)
-            print(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location))
-            self.udp_server.send_udp_message(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location), address)
+        if state.location_details.last_stopped_location:
+            state.location_details.set_location(state.location_details.last_stopped_location)
+            print(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location_details.location))
+            self.udp_server.send_udp_message(Strings.VEHICLE_RESUMED.format(vehicle_id, state.location_details.location), address)
 
         self.driving_vehicle(state, vehicle_id, address)
 
     def stop_vehicle(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        state.change_vehicle_state(False, True, False)
+        state.status_and_controls.change_vehicle_state(False, True, False)
         self.udp_server.send_udp_message(Strings.VEHICLE_STOPPED.format(vehicle_id), address)
 
     def restart_vehicle_position(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        state.change_vehicle_state(False, True, True)
+        state.status_and_controls.change_vehicle_state(False, True, True)
 
-        coordinate = state.coordinates[0]
-        state.set_location({"latitude": coordinate[0], "longitude": coordinate[1]})
-        state.remember_vehicle_last_command(Strings.RESTART_COMMAND)
+        coordinate = state.location_details.coordinates[0]
+        state.location_details.set_location({"latitude": coordinate[0], "longitude": coordinate[1]})
+        state.status_and_controls.remember_vehicle_last_command(Strings.RESTART_COMMAND)
 
         self.udp_server.send_udp_message(Strings.VEHICLE_RESTARTED.format(vehicle_id), address)
 
-        data = state.get_location()
-        self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
+        data = state.location_details.get_location()
+        self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_identification.firebase_id}", data)
 
     def store_all_vehicle_distance_data(self):
         for vehicle, value in self.get_all_vehicle_states().items():
-            distance_traveled_local = int(value.distance_traveled)
-            fuel_consumption_local = value.combined_fuel_consumption
+            distance_traveled_local = int(value.vehicle_data.distance_traveled)
+            fuel_consumption_local = value.vehicle_data.combined_fuel_consumption
             print(f"Vehicle: {vehicle}, Distance traveled: {distance_traveled_local}")
             distance_traveled_firebase = self.firebase_manager.vehicles_manager.get_vehicle_traveled_distance(
-                value.firebase_id)
+                value.firebase_identification.firebase_id)
             fuel_consumption_firebase = self.firebase_manager.reservations_manager.get_reservation_fuel_consumption(
-                value.reservation_id)
+                value.firebase_identification.reservation_id)
             total_distance = distance_traveled_firebase + distance_traveled_local
             total_fuel_consumption = round(fuel_consumption_firebase + fuel_consumption_local, 2)
             data = {'distanceTraveled': total_distance}
-            self.firebase_manager.vehicles_manager.update_vehicle_data(f"{value.firebase_id}", data)
+            self.firebase_manager.vehicles_manager.update_vehicle_data(f"{value.firebase_identification.firebase_id}", data)
             data = {'fuelConsumption': total_fuel_consumption}
-            self.firebase_manager.reservations_manager.update_reservation_data(f"{value.reservation_id}", data)
+            self.firebase_manager.reservations_manager.update_reservation_data(f"{value.firebase_identification.reservation_id}", data)
 
     def process_udp_message(self, message, address):
         parts = message.split(' ')
