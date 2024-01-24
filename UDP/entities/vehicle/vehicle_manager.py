@@ -1,10 +1,10 @@
 import threading
 import time
-from datetime import datetime
 
+from UDP.entities.utilities.reservation_utils import ReservationUtils
 from UDP.entities.utilities.strings import Strings
 from UDP.entities.vehicle.vehicle_state import VehicleState
-from UDP.entities.vehicle.vehicle_id_extractor import VehicleIdExtractor
+from UDP.entities.utilities.vehicle_id_extractor import VehicleIdExtractor
 
 
 class VehicleManager:
@@ -13,16 +13,19 @@ class VehicleManager:
         self.firebase_manager = firebase_manager
         self.maps_api = maps_api
         self.vehicle_statistics = vehicle_statistics
+        self.reservation_utils = ReservationUtils(self.firebase_manager)
 
         self.vehicle_states = {}
 
     def initialize_vehicle(self, vehicle_id):
         extracted_vehicle_id = VehicleIdExtractor.extract_vehicle_id(vehicle_id)
         vehicle = self.firebase_manager.vehicles_manager.get_all_vehicle_data(extracted_vehicle_id)
-        vehicle_location = self.firebase_manager.vehicle_locations_manager.get_all_vehicle_location_data(extracted_vehicle_id)
+        vehicle_location = self.firebase_manager.vehicle_locations_manager.get_all_vehicle_location_data(
+            extracted_vehicle_id)
         self.vehicle_states[vehicle_id] = VehicleState(vehicle_id)
         self.vehicle_states[vehicle_id].set_reservation_id(
-            self.firebase_manager.reservations_manager.get_current_reservation_for_vin_car(extracted_vehicle_id)[0]['reservation_id'])
+            self.firebase_manager.reservations_manager.get_current_reservation_for_vin_car(extracted_vehicle_id)[0][
+                'reservation_id'])
         self.vehicle_states[vehicle_id].set_firebase_id(extracted_vehicle_id)
         self.vehicle_states[vehicle_id].set_location(
             {"latitude": vehicle_location["latitude"], "longitude": vehicle_location["longitude"]})
@@ -39,7 +42,8 @@ class VehicleManager:
 
     def change_vehicle_route(self, vehicle_id, destination, address):
         state = self.get_vehicle_state(vehicle_id)
-        current_location = self.firebase_manager.vehicle_locations_manager.get_vehicle_current_position(state.firebase_id)
+        current_location = self.firebase_manager.vehicle_locations_manager.get_vehicle_current_position(
+            state.firebase_id)
         destination = destination.replace('_', ' ')
         coordinates = self.maps_api.get_directions(f"{current_location['latitude']}, {state.location['longitude']}",
                                                    destination)
@@ -117,16 +121,20 @@ class VehicleManager:
 
     def process_lock_command(self, address, vehicle_id):
         state = self.get_vehicle_state(vehicle_id)
-        if state.is_vehicle_locked():
-            state.set_vehicle_lock_status(False)
-            data = {'locked': False}
-        else:
-            state.set_vehicle_lock_status(True)
-            data = {'locked': True}
+
+        is_locked = state.is_vehicle_locked()
+        state.set_vehicle_lock_status(not is_locked)
+        data = {'locked': not is_locked}
+
+        self.lock_vehicle(state, vehicle_id, address, data)
+
+    def lock_vehicle(self, state, vehicle_id, address, data):
         self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(f"{state.firebase_id}", data)
+
         check_string = Strings.VEHICLE_LOCKED.format(
             vehicle_id) if state.locked is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
         print(check_string)
+
         self.udp_server.send_udp_message(check_string, address)
 
     def driving_vehicle(self, state, vehicle_id, address):
@@ -154,10 +162,9 @@ class VehicleManager:
             distance_between_two_points = self.vehicle_statistics.calculate_distance(previous_location, state.location)
             fuel_consumption = self.vehicle_statistics.calculate_random_fuel_consumption(distance_between_two_points,
                                                                                          state.nominal_fuel_consumption)
-            state.distance_traveled = state.distance_traveled + distance_between_two_points
-            state.combined_fuel_consumption = state.combined_fuel_consumption + fuel_consumption
-            print(
-                f"Distance traveled so far: {round(state.distance_traveled, 2)} km. Fuel consumed: {round(state.combined_fuel_consumption, 2)} L")
+            state.distance_traveled = round(state.distance_traveled + distance_between_two_points, 2)
+            state.combined_fuel_consumption = round(state.combined_fuel_consumption + fuel_consumption, 2)
+            print(f"Distance traveled so far: {state.distance_traveled, 2} km. Fuel consumed: {state.combined_fuel_consumption} L")
             time.sleep(state.get_vehicle_speed())
 
     def start_vehicle(self, address, vehicle_id):
@@ -194,8 +201,10 @@ class VehicleManager:
             distance_traveled_local = int(value.distance_traveled)
             fuel_consumption_local = value.combined_fuel_consumption
             print(f"Vehicle: {vehicle}, Distance traveled: {distance_traveled_local}")
-            distance_traveled_firebase = self.firebase_manager.vehicles_manager.get_vehicle_traveled_distance(value.firebase_id)
-            fuel_consumption_firebase = self.firebase_manager.reservations_manager.get_reservation_fuel_consumption(value.reservation_id)
+            distance_traveled_firebase = self.firebase_manager.vehicles_manager.get_vehicle_traveled_distance(
+                value.firebase_id)
+            fuel_consumption_firebase = self.firebase_manager.reservations_manager.get_reservation_fuel_consumption(
+                value.reservation_id)
             total_distance = distance_traveled_firebase + distance_traveled_local
             total_fuel_consumption = round(fuel_consumption_firebase + fuel_consumption_local, 2)
             data = {'distanceTraveled': total_distance}
@@ -203,43 +212,13 @@ class VehicleManager:
             data = {'fuelConsumption': total_fuel_consumption}
             self.firebase_manager.reservations_manager.update_reservation_data(f"{value.reservation_id}", data)
 
-    def refine_vehicle_id(self, vehicle_id):
-        reservation = self.firebase_manager.reservations_manager.get_current_reservation_for_vin_car(vehicle_id)
-
-        pickup_date_time_raw = datetime.strptime(f"{reservation[0]['pickupDate']} {reservation[0]['pickupTime']}",
-                                                 "%Y-%m-%d %H:%M")
-        pickup_date_time_number = int((pickup_date_time_raw - datetime(1970, 1, 1)).total_seconds() / 60)
-        return_date_time_raw = datetime.strptime(f"{reservation[0]['returnDate']} {reservation[0]['returnTime']}",
-                                                 "%Y-%m-%d %H:%M")
-        return_date_time_number = int((return_date_time_raw - datetime(1970, 1, 1)).total_seconds() / 60)
-
-        return f"{vehicle_id}-{pickup_date_time_number}-{return_date_time_number}"
-
-    def check_if_there_is_initiated_reservation_ongoing(self, vehicle_id):
-        current_datetime = datetime.now()
-        current_datetime_number = (current_datetime - datetime(1970, 1, 1)).total_seconds() / 60
-
-        all_vehicles = self.get_all_vehicle_states()
-        for key, value in all_vehicles.items():
-            if key.startswith(vehicle_id):
-                input_string = key
-                parts = input_string.split('-')
-
-                if len(parts) >= 3:
-                    pickup_date_time_number = int(parts[1])
-                    return_date_time_number = int(parts[2])
-                    if pickup_date_time_number <= current_datetime_number <= return_date_time_number:
-                        return key
-
-        return self.refine_vehicle_id(vehicle_id)
-
     def process_udp_message(self, message, address):
         parts = message.split(' ')
         if len(parts) == 2:
             command, vehicle_id = parts
             command = command.lower()
 
-            vehicle_id = self.refine_vehicle_id(vehicle_id)
+            vehicle_id = self.reservation_utils.create_vehicle_id_from_reservation_dates(vehicle_id)
 
             command_switch = {
                 Strings.START_COMMAND: self.process_start_command,
@@ -255,7 +234,7 @@ class VehicleManager:
             command = command.lower()
 
             if command == Strings.SET_DESTINATION_COMMAND:
-                check_vehicle_id = self.check_if_there_is_initiated_reservation_ongoing(vehicle_id)
+                check_vehicle_id = self.reservation_utils.check_if_there_is_initiated_reservation_ongoing(vehicle_id, self)
                 self.change_vehicle_route(check_vehicle_id, destination, address)
 
     def receive_commands(self):

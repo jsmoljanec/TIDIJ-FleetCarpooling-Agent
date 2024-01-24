@@ -3,14 +3,18 @@ from UDP.entities.utilities.strings import Strings
 
 class VehicleLocationsManager:
     def __init__(self, db_reference):
+        self.LATITUDE_KEY = "latitude"
+        self.LONGITUDE_KEY = "longitude"
+        self.LOCKED_KEY = "locked"
+
         self.db_reference = db_reference.child('VehicleLocations')
 
     def get_vehicle_current_position(self, vehicle_id):
         try:
             vehicle_data = self.db_reference.child(vehicle_id).get()
             return {
-                "latitude": vehicle_data.get("latitude", 0.0),
-                "longitude": vehicle_data.get("longitude", 0.0)
+                self.LATITUDE_KEY: vehicle_data.get(self.LATITUDE_KEY, 0.0),
+                self.LONGITUDE_KEY: vehicle_data.get(self.LONGITUDE_KEY, 0.0)
             }
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCATION.format(e))
@@ -20,7 +24,7 @@ class VehicleLocationsManager:
         try:
             vehicle_data = self.db_reference.child(vehicle_id).get()
             return {
-                "locked": vehicle_data.get("locked", 0.0)
+                self.LOCKED_KEY: vehicle_data.get(self.LOCKED_KEY, 0.0)
             }
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_VEHICLE_LOCK_STATUS.format(e))

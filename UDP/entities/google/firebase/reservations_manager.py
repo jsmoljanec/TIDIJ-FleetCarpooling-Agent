@@ -4,12 +4,14 @@ from datetime import datetime
 
 class ReservationsManager:
     def __init__(self, db_reference):
+        self.FUEL_CONSUMPTION = "fuelConsumption"
+
         self.db_reference = db_reference.child('Reservation')
 
     def get_reservation_fuel_consumption(self, reservation_id):
         try:
             vehicle_data = self.db_reference.child(reservation_id).get()
-            return vehicle_data.get("fuelConsumption", 0.0)
+            return vehicle_data.get(self.FUEL_CONSUMPTION, 0.0)
 
         except Exception as e:
             print(Strings.ERROR_FIREBASE_GET_RESERVATION_FUEL_CONSUMPTION.format(e))
