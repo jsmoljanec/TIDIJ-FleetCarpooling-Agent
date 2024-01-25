@@ -1,4 +1,5 @@
 from UDP.entities.utilities.date_time_utils import DateTimeUtils
+from UDP.entities.vehicle.vehicle_data_manager import VehicleDataManager
 
 
 class ReservationUtils:
@@ -22,7 +23,7 @@ class ReservationUtils:
         return f"{vehicle_id}-{pickup_date_time_number}-{return_date_time_number}"
 
     def check_if_there_is_initiated_reservation_ongoing(self, vehicle_id, manager):
-        all_vehicles = manager.get_all_vehicle_states()
+        all_vehicles = VehicleDataManager.get_all_vehicle_states(manager)
         for key, value in all_vehicles.items():
             if key.startswith(vehicle_id):
                 input_string = key
