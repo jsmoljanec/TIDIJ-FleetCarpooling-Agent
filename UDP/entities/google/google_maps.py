@@ -3,7 +3,7 @@ import os
 import polyline
 from datetime import datetime
 from dotenv import load_dotenv
-from .strings import Strings
+from UDP.entities.utilities.strings import Strings
 
 
 class GoogleMapsAPI:
