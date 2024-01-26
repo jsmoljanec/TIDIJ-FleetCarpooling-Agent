@@ -5,8 +5,8 @@ class VehicleData:
         self.nominal_fuel_consumption = 0
         self.combined_fuel_consumption = 0
 
-    def get_vehicle_speed(self):
-        return self.speed
-
     def set_fuel_consumption(self, fuel_consumption):
         self.nominal_fuel_consumption = fuel_consumption
+
+    def get_vehicle_speed(self):
+        return self.speed

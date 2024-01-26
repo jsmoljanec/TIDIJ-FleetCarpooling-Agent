@@ -26,12 +26,12 @@ class VehicleDataManager:
 
     def store_all_vehicle_distance_data(self, vehicle_manager):
         for vehicle, value in self.get_all_vehicle_states(vehicle_manager).items():
-            local_distance, local_fuel = vehicle_manager.get_local_vehicle_data(value)
-            firebase_distance, firebase_fuel = vehicle_manager.get_firebase_vehicle_data(value.firebase_identification)
+            local_distance, local_fuel = self.get_local_vehicle_data(value)
+            firebase_distance, firebase_fuel = self.get_firebase_vehicle_data(value.firebase_identification, vehicle_manager)
 
             total_distance = firebase_distance + local_distance
             total_fuel_consumption = round(firebase_fuel + local_fuel, 2)
-            vehicle_manager.update_firebase_data(value.firebase_identification, total_distance, total_fuel_consumption)
+            self.update_firebase_data(value.firebase_identification, total_distance, total_fuel_consumption, vehicle_manager)
 
             print(f"Vehicle: {vehicle}, Distance traveled: {local_distance}")
 

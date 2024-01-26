@@ -9,6 +9,14 @@ class StatusControls:
         self.last_command = None
         self.locked = None
 
+    def remember_vehicle_last_command(self, command):
+        self.last_command = command
+
+    def change_vehicle_state(self, is_running, stop_requested, restart_requested):
+        self.is_running = is_running
+        self.stop_requested = stop_requested
+        self.restart_requested = restart_requested
+
     def update_vehicle_lock_status(self, lock):
         self.locked = lock
 
@@ -23,11 +31,3 @@ class StatusControls:
 
     def is_vehicle_locked(self):
         return self.locked is True
-
-    def remember_vehicle_last_command(self, command):
-        self.last_command = command
-
-    def change_vehicle_state(self, is_running, stop_requested, restart_requested):
-        self.is_running = is_running
-        self.stop_requested = stop_requested
-        self.restart_requested = restart_requested

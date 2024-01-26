@@ -12,3 +12,4 @@ class VehicleIdExtractor:
             return first
         else:
             print(Strings.ERROR_STRING_FORMAT)
+            return None

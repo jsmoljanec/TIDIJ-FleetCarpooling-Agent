@@ -31,10 +31,10 @@ class ReservationsManager:
                 pickup_time = reservation_data.get("pickupTime")
                 return_date = reservation_data.get("returnDate")
                 return_time = reservation_data.get("returnTime")
-                start_datetime = datetime.strptime(pickup_date + " " + pickup_time, date_time_format)
-                end_datetime = datetime.strptime(return_date + " " + return_time, date_time_format)
+                start_datetime = f"{pickup_date} {pickup_time}"
+                end_datetime = f"{return_date} {return_time}"
 
-                if car_vin == vehicle_id and DateTimeUtils.is_current_time_between_dates__string(start_datetime, end_datetime):
+                if car_vin == vehicle_id and DateTimeUtils.is_current_time_between_dates__string(start_datetime, end_datetime, date_time_format):
                     matching_reservations.append({
                         "reservation_id": reservation_id,
                         "VinCar": car_vin,
