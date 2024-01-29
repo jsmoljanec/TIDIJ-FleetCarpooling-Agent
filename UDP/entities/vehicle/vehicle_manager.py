@@ -114,12 +114,12 @@ class VehicleManager:
         self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(
             f"{state.firebase_identification.firebase_id}", data)
 
-    def lock(self, state, vehicle_id, address, data):
+    def lock(self, state, address, data):
         self.firebase_manager.vehicle_locations_manager.update_vehicle_location_data(
             f"{state.firebase_identification.firebase_id}", data)
 
         check_string = Strings.VEHICLE_LOCKED.format(
-            vehicle_id) if state.status_and_controls.is_vehicle_locked() is True else Strings.VEHICLE_UNLOCKED.format(vehicle_id)
+            state.vehicle_id) if state.status_and_controls.is_vehicle_locked() is True else Strings.VEHICLE_UNLOCKED.format(state.vehicle_id)
         print(check_string)
 
         self.udp_server.send_udp_message(check_string, address)

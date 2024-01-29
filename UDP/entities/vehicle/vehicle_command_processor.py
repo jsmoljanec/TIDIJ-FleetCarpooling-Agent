@@ -73,7 +73,7 @@ class VehicleCommandProcessor:
         state.status_and_controls.update_vehicle_lock_status(not is_locked)
         data = {'locked': not is_locked}
 
-        vehicle_manager.lock(state, vehicle_id, address, data)
+        vehicle_manager.lock(state, address, data)
 
     @staticmethod
     def current_location_command(vehicle_manager, address, vehicle_id):

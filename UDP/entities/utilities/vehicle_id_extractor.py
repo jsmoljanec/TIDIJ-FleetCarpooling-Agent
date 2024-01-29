@@ -10,6 +10,6 @@ class VehicleIdExtractor:
         if len(parts) >= 3:
             first = parts[0]
             return first
-        else:
-            print(Strings.ERROR_STRING_FORMAT)
-            return None
+
+        print(Strings.ERROR_STRING_FORMAT)
+        return None
