@@ -1,0 +1,5 @@
+.env
+.idea
+.credentials
+exceptions.log
+_pycache_
